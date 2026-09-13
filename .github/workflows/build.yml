@@ -57,7 +57,9 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          # core/ и src-tauri/ — один Cargo-workspace с общим target/ в корне репо
+          # (а не в src-tauri/, как было до объединения в workspace).
+          workspaces: '. -> target'
 
       - uses: actions/setup-node@v4
         with:
@@ -103,6 +105,6 @@ jobs:
         with:
           name: zexor-vpn-windows
           path: |
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+            target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
           if-no-files-found: warn
