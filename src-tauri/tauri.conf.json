@@ -42,7 +42,9 @@
   "plugins": {
     "updater": {
       "active": true,
-      "endpoints": ["https://download.zexorvpn.site/latest.json"],
+      "endpoints": [
+        "https://github.com/Zexor-vp/ZexorVPNApp/releases/latest/download/latest.json"
+      ],
       "dialog": false,
       "pubkey": "ЗАМЕНИТЬ_ПОСЛЕ_ГЕНЕРАЦИИ_КЛЮЧА"
     }

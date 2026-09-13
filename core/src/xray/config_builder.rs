@@ -232,7 +232,7 @@ mod tests {
     use super::*;
     use crate::xray::parser::parse_vless_uri;
 
-    const REALITY_URI: &str = "vless://eab05bb2-361e-4638-afa0-94e8daefce62@2.26.10.153:10443?type=tcp&security=reality&pbk=tm-Y857WhrGGdp7xupkBM4ETzOuN4OPcNrvPmZ3bsC0&fp=chrome&sni=twitch.tv&sid=dd422b32b5b0c925&spx=%2F&flow=xtls-rprx-vision#US";
+    const REALITY_URI: &str = "vless://00000000-1111-2222-3333-444444444444@203.0.113.10:10443?type=tcp&security=reality&pbk=EXAMPLEPublicKeyForTestsOnly0000000000000000&fp=chrome&sni=example.com&sid=0123456789abcdef&spx=%2F&flow=xtls-rprx-vision#US";
 
     fn reality_config(opts: ConfigOptions) -> Value {
         let node = parse_vless_uri(REALITY_URI).unwrap();
@@ -248,21 +248,21 @@ mod tests {
         assert_eq!(proxy["tag"], "proxy");
 
         let vnext = &proxy["settings"]["vnext"][0];
-        assert_eq!(vnext["address"], "2.26.10.153");
+        assert_eq!(vnext["address"], "203.0.113.10");
         assert_eq!(vnext["port"], 10443);
-        assert_eq!(vnext["users"][0]["id"], "eab05bb2-361e-4638-afa0-94e8daefce62");
+        assert_eq!(vnext["users"][0]["id"], "00000000-1111-2222-3333-444444444444");
         assert_eq!(vnext["users"][0]["encryption"], "none");
         assert_eq!(vnext["users"][0]["flow"], "xtls-rprx-vision");
 
         let stream = &proxy["streamSettings"];
         assert_eq!(stream["network"], "tcp");
         assert_eq!(stream["security"], "reality");
-        assert_eq!(stream["realitySettings"]["serverName"], "twitch.tv");
+        assert_eq!(stream["realitySettings"]["serverName"], "example.com");
         assert_eq!(
             stream["realitySettings"]["publicKey"],
-            "tm-Y857WhrGGdp7xupkBM4ETzOuN4OPcNrvPmZ3bsC0"
+            "EXAMPLEPublicKeyForTestsOnly0000000000000000"
         );
-        assert_eq!(stream["realitySettings"]["shortId"], "dd422b32b5b0c925");
+        assert_eq!(stream["realitySettings"]["shortId"], "0123456789abcdef");
         assert_eq!(stream["realitySettings"]["fingerprint"], "chrome");
         assert_eq!(stream["realitySettings"]["spiderX"], "/");
     }

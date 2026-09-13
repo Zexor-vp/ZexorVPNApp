@@ -257,15 +257,16 @@ mod tests {
     use base64::engine::general_purpose::STANDARD;
     use base64::Engine as _;
 
-    /// Реальная ссылка того же вида, что отдаёт наша панель для США-ноды.
-    const REALITY_URI: &str = "vless://eab05bb2-361e-4638-afa0-94e8daefce62@2.26.10.153:10443?type=tcp&security=reality&pbk=tm-Y857WhrGGdp7xupkBM4ETzOuN4OPcNrvPmZ3bsC0&fp=chrome&sni=twitch.tv&sid=dd422b32b5b0c925&spx=%2F&flow=xtls-rprx-vision#%F0%9F%87%BA%F0%9F%87%B8%20%D0%A1%D0%A8%D0%90";
+    /// Ссылка того же вида, что отдаёт панель. Значения — из RFC 5737/документации:
+    /// настоящие UUID и ключи REALITY в репозиторий класть нельзя, это доступ к серверу.
+    const REALITY_URI: &str = "vless://00000000-1111-2222-3333-444444444444@203.0.113.10:10443?type=tcp&security=reality&pbk=EXAMPLEPublicKeyForTestsOnly0000000000000000&fp=chrome&sni=example.com&sid=0123456789abcdef&spx=%2F&flow=xtls-rprx-vision#%F0%9F%87%BA%F0%9F%87%B8%20%D0%A1%D0%A8%D0%90";
 
     #[test]
     fn parses_reality_uri_fully() {
         let node = parse_vless_uri(REALITY_URI).expect("должен распарситься");
 
-        assert_eq!(node.uuid, "eab05bb2-361e-4638-afa0-94e8daefce62");
-        assert_eq!(node.address, "2.26.10.153");
+        assert_eq!(node.uuid, "00000000-1111-2222-3333-444444444444");
+        assert_eq!(node.address, "203.0.113.10");
         assert_eq!(node.port, 10443);
         assert_eq!(node.network, "tcp");
         assert_eq!(node.flow.as_deref(), Some("xtls-rprx-vision"));
@@ -281,9 +282,9 @@ mod tests {
                 fingerprint,
                 spider_x,
             } => {
-                assert_eq!(server_name, "twitch.tv");
-                assert_eq!(public_key, "tm-Y857WhrGGdp7xupkBM4ETzOuN4OPcNrvPmZ3bsC0");
-                assert_eq!(short_id.as_deref(), Some("dd422b32b5b0c925"));
+                assert_eq!(server_name, "example.com");
+                assert_eq!(public_key, "EXAMPLEPublicKeyForTestsOnly0000000000000000");
+                assert_eq!(short_id.as_deref(), Some("0123456789abcdef"));
                 assert_eq!(fingerprint, "chrome");
                 assert_eq!(spider_x.as_deref(), Some("/"));
             }
@@ -415,7 +416,7 @@ mod tests {
         let plain = format!("trojan://x@y:443#t\n{REALITY_URI}\nss://abc#s\n");
         let nodes = parse_subscription(&plain).unwrap();
         assert_eq!(nodes.len(), 1);
-        assert_eq!(nodes[0].address, "2.26.10.153");
+        assert_eq!(nodes[0].address, "203.0.113.10");
     }
 
     #[test]

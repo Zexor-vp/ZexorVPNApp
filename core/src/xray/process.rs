@@ -34,12 +34,20 @@ pub struct XrayProcess {
 
 impl XrayProcess {
     /// Пишет конфиг на диск и поднимает процесс.
-    pub fn start(binary: &Path, config: &serde_json::Value) -> Result<Self, XrayError> {
+    ///
+    /// Путь конфига передаётся явно, а не берётся из окружения: так функция
+    /// остаётся чистой и тестируемой (глобальный `LOCALAPPDATA` иначе течёт
+    /// между параллельными тестами). Продакшен-путь даёт [`config_file_path`].
+    pub fn start(
+        binary: &Path,
+        config: &serde_json::Value,
+        config_path: &Path,
+    ) -> Result<Self, XrayError> {
         if !binary.exists() {
             return Err(XrayError::BinaryNotFound(binary.to_path_buf()));
         }
 
-        let config_path = config_file_path();
+        let config_path = config_path.to_path_buf();
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| XrayError::ConfigWrite(e.to_string()))?;
         }
@@ -122,10 +130,19 @@ impl Drop for XrayProcess {
 
 /// `%LOCALAPPDATA%\ZexorVPN\xray\config.json`
 pub fn config_file_path() -> PathBuf {
-    let base = std::env::var("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| std::env::temp_dir());
+    config_file_path_in(&app_data_dir())
+}
+
+/// Та же раскладка, но от произвольной базы — чтобы не зависеть от окружения в тестах.
+pub fn config_file_path_in(base: &Path) -> PathBuf {
     base.join("ZexorVPN").join("xray").join("config.json")
+}
+
+/// Каталог данных приложения: `%LOCALAPPDATA%`, а если его нет — временный.
+pub fn app_data_dir() -> PathBuf {
+    std::env::var("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir())
 }
 
 #[cfg(windows)]
@@ -198,18 +215,28 @@ mod tests {
         }
     }
 
+    /// Уникальный путь на каждый тест — тесты идут параллельно.
+    fn temp_config_path(tag: &str) -> PathBuf {
+        std::env::temp_dir()
+            .join(format!("zexor-cfg-{}-{tag}", std::process::id()))
+            .join("config.json")
+    }
+
     #[test]
     fn reports_missing_binary_clearly() {
         let missing = PathBuf::from("/nonexistent/xray-binary");
-        let err = expect_err(XrayProcess::start(&missing, &serde_json::json!({})));
+        let err = expect_err(XrayProcess::start(
+            &missing,
+            &serde_json::json!({}),
+            &temp_config_path("missing"),
+        ));
         assert!(matches!(err, XrayError::BinaryNotFound(_)));
     }
 
     #[test]
-    fn config_path_lives_under_local_appdata() {
-        std::env::set_var("LOCALAPPDATA", "/tmp/zexor-cfg-test");
-        let path = config_file_path();
-        assert!(path.ends_with("ZexorVPN/xray/config.json"), "{path:?}");
+    fn production_config_path_lives_under_app_data() {
+        let path = config_file_path_in(Path::new("/base"));
+        assert_eq!(path, Path::new("/base/ZexorVPN/xray/config.json"));
     }
 
     /// Скрипт-заглушка вместо xray: принимает любые аргументы, ведёт себя как
@@ -230,10 +257,13 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn detects_process_that_exits_immediately() {
-        std::env::set_var("LOCALAPPDATA", std::env::temp_dir().join("zexor-exit-test"));
         let binary = fake_xray("dies.sh", "exit 23");
 
-        let err = expect_err(XrayProcess::start(&binary, &serde_json::json!({"log": {}})));
+        let err = expect_err(XrayProcess::start(
+            &binary,
+            &serde_json::json!({"log": {}}),
+            &temp_config_path("dies"),
+        ));
 
         match err {
             XrayError::ExitedImmediately(code) => assert_eq!(code, Some(23)),
@@ -246,11 +276,11 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn writes_config_tracks_and_stops_running_process() {
-        std::env::set_var("LOCALAPPDATA", std::env::temp_dir().join("zexor-run-test"));
         let binary = fake_xray("lives.sh", "sleep 30");
         let config = serde_json::json!({"log": {"loglevel": "warning"}});
 
-        let mut process = XrayProcess::start(&binary, &config).unwrap();
+        let mut process =
+            XrayProcess::start(&binary, &config, &temp_config_path("lives")).unwrap();
 
         assert!(process.is_running());
         let written = std::fs::read_to_string(process.config_path()).unwrap();
