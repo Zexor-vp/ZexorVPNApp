@@ -26,14 +26,25 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "icon": ["icons/icon.ico"],
-    "resources": ["resources/*"],
-    "externalBin": ["binaries/xray"],
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "resources/*"
+    ],
+    "externalBin": [
+      "binaries/xray"
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["Russian", "English"]
+        "languages": [
+          "Russian",
+          "English"
+        ]
       }
     },
     "shortDescription": "Zexor VPN",
@@ -46,7 +57,7 @@
         "https://github.com/Zexor-vp/ZexorVPNApp/releases/latest/download/latest.json"
       ],
       "dialog": false,
-      "pubkey": "ЗАМЕНИТЬ_ПОСЛЕ_ГЕНЕРАЦИИ_КЛЮЧА"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNGMEFCQTUxMkIwNjU0RjMKUldUelZBWXJVYm9LUHhrRkYrbzE0UXQrKzJPdnJHYUdNVDFWK2lnc2VFYmViem92c2pIa09uQkYK"
     }
   }
 }
