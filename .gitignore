@@ -1,0 +1,22 @@
+# Rust
+/target/
+**/target/
+
+# Node / фронтенд
+node_modules/
+dist/
+.vite/
+
+# Бинарники xray-core качаются при сборке, в репозитории им не место
+src-tauri/binaries/*
+!src-tauri/binaries/.gitkeep
+
+# Ключи подписи обновлений — только в GitHub Secrets, никогда в git
+*.key
+tauri-signing-key*
+.env
+.env.local
+
+# Системное
+.DS_Store
+Thumbs.db

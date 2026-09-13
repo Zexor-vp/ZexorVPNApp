@@ -1,0 +1,42 @@
+[package]
+name = "zexor-vpn-desktop"
+version = "0.1.0"
+description = "Zexor VPN desktop client for Windows"
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "zexor_vpn_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+url = "2"
+percent-encoding = "2"
+base64 = "0.22"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "process", "time", "sync", "macros"] }
+keyring = { version = "3", features = ["windows-native"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+    "Win32_Networking_WinInet",
+] }
+
+[dev-dependencies]
+pretty_assertions = "1"

@@ -1,0 +1,21 @@
+/* Базовая палитра повторяет тёмную тему кабинета: фон #0a0f1a, поверхность #0f172a. */
+:root {
+  --color-dark-bg: #0a0f1a;
+  --color-dark-surface: #0f172a;
+  --color-dark-text: #f1f5f9;
+  --color-accent: #0ea5e9;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-dark-bg);
+  color: var(--color-dark-text);
+  font-family: Manrope, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.app-shell {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}

@@ -1,0 +1,103 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Версия ядра, которое кладётся в инсталлятор. Обновлять осознанно:
+  # сборка должна быть воспроизводимой, поэтому latest здесь намеренно не используется.
+  XRAY_VERSION: v25.9.11
+
+jobs:
+  # Тесты ядра гоняем на Linux — они не зависят от платформы и это дешевле и быстрее,
+  # чем поднимать windows-раннер (он тарифицируется с множителем x2).
+  test-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Тесты ядра
+        run: cargo test -p zexor-vpn-core --all-features
+
+      - name: Проверка Windows-специфичного кода
+        # Реестр и Job Object не компилируются под Linux, но проверить их типы
+        # можно кросс-таргетом — без этого ошибки всплывают только на релизной сборке.
+        run: cargo check -p zexor-vpn-core --target x86_64-pc-windows-gnu
+
+      - name: Форматирование и линт
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy -p zexor-vpn-core -- -D warnings
+
+  build-windows:
+    needs: test-core
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Установка зависимостей фронтенда
+        run: npm ci
+
+      - name: Загрузка xray-core
+        shell: pwsh
+        run: |
+          $url = "https://github.com/XTLS/Xray-core/releases/download/$env:XRAY_VERSION/Xray-windows-64.zip"
+          Write-Host "Скачиваю $url"
+          Invoke-WebRequest -Uri $url -OutFile xray.zip
+          Expand-Archive -Path xray.zip -DestinationPath xray-tmp -Force
+          New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null
+          # Tauri ищет sidecar по имени с target triple.
+          Copy-Item xray-tmp/xray.exe src-tauri/binaries/xray-x86_64-pc-windows-msvc.exe
+          # geosite/geoip нужны для правил geoip:private и geosite:* в конфиге.
+          Copy-Item xray-tmp/geosite.dat src-tauri/resources/
+          Copy-Item xray-tmp/geoip.dat src-tauri/resources/
+
+      - name: Сборка приложения и инсталлятора
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ключ подписи обновлений. Без него updater откажется принимать релиз.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          # Релиз создаётся только для тегов; обычные пуши просто проверяют сборку.
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: 'Zexor VPN ${{ github.ref_name }}'
+          releaseBody: 'Автосборка. Установщик для Windows приложен ниже.'
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          args: --target x86_64-pc-windows-msvc
+
+      - name: Артефакты сборки
+        uses: actions/upload-artifact@v4
+        with:
+          name: zexor-vpn-windows
+          path: |
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+          if-no-files-found: warn
