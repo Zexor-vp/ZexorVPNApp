@@ -30,6 +30,11 @@ jobs:
       - name: Тесты ядра
         run: cargo test -p zexor-vpn-core --all-features
 
+      - name: Установка mingw для кросс-компиляции
+        # ring (зависимость reqwest/rustls) собирает C-код своим build-script'ом
+        # даже под простой `cargo check` — без кросс-компилятора шаг ниже падает.
+        run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+
       - name: Проверка Windows-специфичного кода
         # Реестр и Job Object не компилируются под Linux, но проверить их типы
         # можно кросс-таргетом — без этого ошибки всплывают только на релизной сборке.
