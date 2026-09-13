@@ -2,6 +2,9 @@
 /target/
 **/target/
 
+# Схемы, которые Tauri сам пересобирает при cargo check/build
+src-tauri/gen/
+
 # Node / фронтенд
 node_modules/
 dist/

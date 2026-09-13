@@ -72,7 +72,9 @@ impl XrayProcess {
             command.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let child = command.spawn().map_err(|e| XrayError::Spawn(e.to_string()))?;
+        let child = command
+            .spawn()
+            .map_err(|e| XrayError::Spawn(e.to_string()))?;
 
         #[cfg(windows)]
         let job = {
@@ -152,8 +154,8 @@ mod job {
 
     use windows::Win32::Foundation::{CloseHandle, HANDLE};
     use windows::Win32::System::JobObjects::{
-        AssignProcessToJobObject, CreateJobObjectW, SetInformationJobObject,
-        JobObjectExtendedLimitInformation, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
+        SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
         JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
     };
 
@@ -279,8 +281,7 @@ mod tests {
         let binary = fake_xray("lives.sh", "sleep 30");
         let config = serde_json::json!({"log": {"loglevel": "warning"}});
 
-        let mut process =
-            XrayProcess::start(&binary, &config, &temp_config_path("lives")).unwrap();
+        let mut process = XrayProcess::start(&binary, &config, &temp_config_path("lives")).unwrap();
 
         assert!(process.is_running());
         let written = std::fs::read_to_string(process.config_path()).unwrap();

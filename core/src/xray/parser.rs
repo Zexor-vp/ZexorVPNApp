@@ -97,7 +97,10 @@ pub fn parse_vless_uri(uri: &str) -> Result<VlessNode, ParseError> {
         return Err(ParseError::MissingUuid);
     }
 
-    let address = parsed.host_str().ok_or(ParseError::MissingHost)?.to_string();
+    let address = parsed
+        .host_str()
+        .ok_or(ParseError::MissingHost)?
+        .to_string();
     if address.is_empty() {
         return Err(ParseError::MissingHost);
     }

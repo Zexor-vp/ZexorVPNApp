@@ -103,8 +103,14 @@ mod tests {
 
     #[test]
     fn rejects_malformed_jwt() {
-        assert_eq!(jwt_expiry("no-dots-here").unwrap_err(), TokenError::MalformedJwt);
-        assert_eq!(jwt_expiry("a.!!!not-base64!!!.c").unwrap_err(), TokenError::MalformedJwt);
+        assert_eq!(
+            jwt_expiry("no-dots-here").unwrap_err(),
+            TokenError::MalformedJwt
+        );
+        assert_eq!(
+            jwt_expiry("a.!!!not-base64!!!.c").unwrap_err(),
+            TokenError::MalformedJwt
+        );
         let no_exp = URL_SAFE_NO_PAD.encode(r#"{"sub":"842"}"#);
         assert_eq!(
             jwt_expiry(&format!("h.{no_exp}.s")).unwrap_err(),

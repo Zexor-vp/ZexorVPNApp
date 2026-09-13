@@ -1,0 +1,34 @@
+# Zexor VPN — стартовый блок-лист рекламы и трекеров.
+#
+# Это минимальный, вручную проверенный набор самых распространённых
+# рекламных/трекинговых доменов — не полноценный список вроде OISD/AdGuard
+# Base (их подключение в бандл — Phase 2, см. план). Формат: голый домен на
+# строку, поддомены блокируются автоматически.
+
+# --- Google Ads / Analytics ---
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+google-analytics.com
+googletagmanager.com
+googletagservices.com
+adservice.google.com
+
+# --- Facebook / Meta ---
+ads.facebook.com
+connect.facebook.net
+
+# --- Amazon Ads ---
+amazon-adsystem.com
+
+# --- Yandex ---
+an.yandex.ru
+mc.yandex.ru
+
+# --- Популярные трекеры ---
+scorecardresearch.com
+adnxs.com
+outbrain.com
+taboola.com
+criteo.com
+mmstat.com

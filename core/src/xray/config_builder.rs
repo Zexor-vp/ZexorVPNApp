@@ -113,7 +113,10 @@ fn build_stream_settings(node: &VlessNode) -> Value {
             reality.insert("fingerprint".into(), json!(fingerprint));
             // Пустой shortId допустим только если сервер сконфигурирован с "" —
             // но панель всегда отдаёт конкретный sid, поэтому кладём его как есть.
-            reality.insert("shortId".into(), json!(short_id.clone().unwrap_or_default()));
+            reality.insert(
+                "shortId".into(),
+                json!(short_id.clone().unwrap_or_default()),
+            );
             if let Some(spx) = spider_x {
                 reality.insert("spiderX".into(), json!(spx));
             }
@@ -149,7 +152,11 @@ fn build_stream_settings(node: &VlessNode) -> Value {
             let mut ws = Map::new();
             ws.insert(
                 "path".into(),
-                json!(node.transport.get("path").cloned().unwrap_or_else(|| "/".into())),
+                json!(node
+                    .transport
+                    .get("path")
+                    .cloned()
+                    .unwrap_or_else(|| "/".into())),
             );
             if let Some(host) = node.transport.get("host") {
                 ws.insert("headers".into(), json!({ "Host": host }));
@@ -163,7 +170,11 @@ fn build_stream_settings(node: &VlessNode) -> Value {
             }
             grpc.insert(
                 "multiMode".into(),
-                json!(node.transport.get("mode").map(|m| m == "multi").unwrap_or(false)),
+                json!(node
+                    .transport
+                    .get("mode")
+                    .map(|m| m == "multi")
+                    .unwrap_or(false)),
             );
             stream.insert("grpcSettings".into(), Value::Object(grpc));
         }
@@ -250,7 +261,10 @@ mod tests {
         let vnext = &proxy["settings"]["vnext"][0];
         assert_eq!(vnext["address"], "203.0.113.10");
         assert_eq!(vnext["port"], 10443);
-        assert_eq!(vnext["users"][0]["id"], "00000000-1111-2222-3333-444444444444");
+        assert_eq!(
+            vnext["users"][0]["id"],
+            "00000000-1111-2222-3333-444444444444"
+        );
         assert_eq!(vnext["users"][0]["encryption"], "none");
         assert_eq!(vnext["users"][0]["flow"], "xtls-rprx-vision");
 
@@ -272,7 +286,10 @@ mod tests {
         let node = parse_vless_uri("vless://u@h:443?security=reality&pbk=K&sni=s.example").unwrap();
         let cfg = build_config(&node, &ConfigOptions::default());
         let user = &cfg["outbounds"][0]["settings"]["vnext"][0]["users"][0];
-        assert!(user.get("flow").is_none(), "flow не должен появляться пустым");
+        assert!(
+            user.get("flow").is_none(),
+            "flow не должен появляться пустым"
+        );
     }
 
     #[test]
@@ -358,9 +375,18 @@ mod tests {
     #[test]
     fn normalizes_blocklist_entries() {
         assert_eq!(normalize_domain_rule("example.com"), "domain:example.com");
-        assert_eq!(normalize_domain_rule("  example.com  "), "domain:example.com");
-        assert_eq!(normalize_domain_rule("full:ads.example"), "full:ads.example");
-        assert_eq!(normalize_domain_rule("geosite:category-ads"), "geosite:category-ads");
+        assert_eq!(
+            normalize_domain_rule("  example.com  "),
+            "domain:example.com"
+        );
+        assert_eq!(
+            normalize_domain_rule("full:ads.example"),
+            "full:ads.example"
+        );
+        assert_eq!(
+            normalize_domain_rule("geosite:category-ads"),
+            "geosite:category-ads"
+        );
         assert_eq!(normalize_domain_rule("# комментарий"), "");
         assert_eq!(normalize_domain_rule("! adblock-комментарий"), "");
         assert_eq!(normalize_domain_rule(""), "");

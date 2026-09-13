@@ -33,7 +33,7 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "resources/*"
+      "resources/**/*"
     ],
     "externalBin": [
       "binaries/xray"

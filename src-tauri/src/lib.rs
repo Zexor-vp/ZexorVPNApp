@@ -4,11 +4,10 @@
 
 pub mod adblock;
 pub mod auth;
-pub mod proxy;
 pub mod state;
 pub mod xray;
 
-use tauri::Manager;
+use tauri::Manager as _;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

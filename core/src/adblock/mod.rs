@@ -226,7 +226,10 @@ bad-.example
     #[test]
     fn normalizes_leading_dots_instead_of_rejecting() {
         // `.example.com` и `..example.com` — это тот же домен, а не мусор.
-        assert_eq!(parse_blocklist(".ads.example\n..cdn.example\n"), vec!["ads.example", "cdn.example"]);
+        assert_eq!(
+            parse_blocklist(".ads.example\n..cdn.example\n"),
+            vec!["ads.example", "cdn.example"]
+        );
     }
 
     #[test]
