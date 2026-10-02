@@ -14,7 +14,7 @@ use url::Url;
 pub enum ParseError {
     #[error("не удалось декодировать подписку: содержимое не base64 и не список ссылок")]
     UndecodableSubscription,
-    #[error("в подписке нет ни одной поддерживаемой ссылки (ожидался vless://)")]
+    #[error("в подписке нет ни одной поддерживаемой ссылки (ожидались vless:// или wireguard://)")]
     NoSupportedNodes,
     #[error("некорректный URI: {0}")]
     InvalidUri(String),
@@ -26,6 +26,10 @@ pub enum ParseError {
     MissingHost,
     #[error("в ссылке отсутствует порт")]
     MissingPort,
+    #[error("в WireGuard-ссылке не хватает ключа")]
+    MissingWireguardKey,
+    #[error("в WireGuard-ссылке нет адреса клиента (address)")]
+    MissingWireguardAddress,
     #[error("REALITY требует параметр pbk (публичный ключ)")]
     MissingRealityPublicKey,
     #[error("REALITY требует параметр sni (serverName)")]
@@ -211,7 +215,7 @@ pub fn parse_subscription(body: &str) -> Result<Vec<VlessNode>, ParseError> {
 
 /// base64 (обычный или url-safe, с padding и без) → текст. Если это уже текст со
 /// ссылками — возвращаем как есть.
-fn decode_subscription_body(body: &str) -> Result<String, ParseError> {
+pub(crate) fn decode_subscription_body(body: &str) -> Result<String, ParseError> {
     let trimmed = body.trim();
     if trimmed.is_empty() {
         return Err(ParseError::UndecodableSubscription);

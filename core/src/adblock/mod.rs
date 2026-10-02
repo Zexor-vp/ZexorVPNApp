@@ -7,6 +7,9 @@
 
 use std::collections::BTreeSet;
 
+pub mod counter;
+pub mod settings;
+
 /// Хосты, которые нельзя блокировать, даже если они встретились в списке —
 /// иначе сломаем локальную машину.
 const NEVER_BLOCK: &[&str] = &[
@@ -105,7 +108,7 @@ fn is_ip_like(token: &str) -> bool {
 /// Грубая, но достаточная проверка: нам важно не пустить в конфиг мусор,
 /// который xray потом не примет. Валидируем полейбльно — дефис в конце любого
 /// лейбла (`bad-.example`) так же невалиден, как и в конце всего домена.
-fn is_valid_domain(domain: &str) -> bool {
+pub(crate) fn is_valid_domain(domain: &str) -> bool {
     if domain.is_empty() || domain.len() > 253 || !domain.contains('.') {
         return false;
     }

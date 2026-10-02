@@ -11,7 +11,9 @@ on:
 env:
   # Версия ядра, которое кладётся в инсталлятор. Обновлять осознанно:
   # сборка должна быть воспроизводимой, поэтому latest здесь намеренно не используется.
-  XRAY_VERSION: v25.9.11
+  XRAY_VERSION: v26.9.9
+  # Драйвер виртуального адаптера для режима TUN (xray подгружает wintun.dll рядом с собой).
+  WINTUN_VERSION: '0.14.1'
 
 jobs:
   # Тесты ядра гоняем на Linux — они не зависят от платформы и это дешевле и быстрее,
@@ -82,6 +84,15 @@ jobs:
           # geosite/geoip нужны для правил geoip:private и geosite:* в конфиге.
           Copy-Item xray-tmp/geosite.dat src-tauri/resources/
           Copy-Item xray-tmp/geoip.dat src-tauri/resources/
+
+      - name: Загрузка wintun (драйвер TUN)
+        shell: pwsh
+        run: |
+          $url = "https://www.wintun.net/builds/wintun-$env:WINTUN_VERSION.zip"
+          Write-Host "Скачиваю $url"
+          Invoke-WebRequest -Uri $url -OutFile wintun.zip
+          Expand-Archive -Path wintun.zip -DestinationPath wintun-tmp -Force
+          Copy-Item wintun-tmp/wintun/bin/amd64/wintun.dll src-tauri/resources/
 
       - name: Сборка приложения и инсталлятора
         uses: tauri-apps/tauri-action@v0

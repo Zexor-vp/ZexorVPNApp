@@ -130,6 +130,19 @@ struct PairStatusBody {
     refresh_token: Option<String>,
 }
 
+/// Значение заголовка `X-Zexor-Client`: `desktop/<версия приложения>`.
+pub fn client_header_value() -> String {
+    format!("desktop/{}", env!("CARGO_PKG_VERSION"))
+}
+
+fn client_headers() -> reqwest::header::HeaderMap {
+    let mut headers = reqwest::header::HeaderMap::new();
+    if let Ok(value) = reqwest::header::HeaderValue::from_str(&client_header_value()) {
+        headers.insert("X-Zexor-Client", value);
+    }
+    headers
+}
+
 pub struct ApiClient {
     base_url: String,
     http: reqwest::Client,
@@ -141,6 +154,8 @@ impl ApiClient {
             base_url: base_url.into().trim_end_matches('/').to_string(),
             http: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(15))
+                // Сервер по этому заголовку узнаёт пользователей приложения (у них увеличенная квота грейса).
+                .default_headers(client_headers())
                 .build()
                 .expect("не удалось создать HTTP-клиент"),
         }
@@ -193,6 +208,65 @@ impl ApiClient {
 
         self.parse_or_error(response, |_, _| ApiError::Unauthorized)
             .await
+    }
+
+    /// Универсальный авторизованный запрос к Cabinet API: страницы приложения (тариф,
+    /// профиль, рефералы) ходят через него, не требуя отдельной обвязки на каждый метод.
+    ///
+    /// Разрешены только пути кабинета (`/api/cabinet/...`) без `..` и без схемы/хоста —
+    /// токен нельзя отправить на посторонний адрес. Пустой ответ превращается в `null`.
+    pub async fn raw_request(
+        &self,
+        method: &str,
+        path: &str,
+        access_token: &str,
+        body: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, ApiError> {
+        if !path.starts_with("/api/cabinet/") || path.contains("..") || path.contains("://") {
+            return Err(ApiError::Server {
+                status: 400,
+                message: "недопустимый путь запроса".to_string(),
+            });
+        }
+        let method = match method.to_ascii_uppercase().as_str() {
+            "GET" => reqwest::Method::GET,
+            "POST" => reqwest::Method::POST,
+            "PUT" => reqwest::Method::PUT,
+            "PATCH" => reqwest::Method::PATCH,
+            "DELETE" => reqwest::Method::DELETE,
+            other => {
+                return Err(ApiError::Server {
+                    status: 400,
+                    message: format!("неподдерживаемый метод: {other}"),
+                })
+            }
+        };
+
+        let mut request = self
+            .http
+            .request(method, self.url(path))
+            .bearer_auth(access_token);
+        if let Some(body) = body {
+            request = request.json(&body);
+        }
+        let response = request.send().await?;
+
+        let status = response.status();
+        let text = response.text().await?;
+        if status.is_success() {
+            if text.trim().is_empty() {
+                return Ok(serde_json::Value::Null);
+            }
+            return serde_json::from_str(&text).map_err(|e| ApiError::Decode(e.to_string()));
+        }
+        Err(match status.as_u16() {
+            401 => ApiError::Unauthorized,
+            429 => ApiError::RateLimited,
+            code => ApiError::Server {
+                status: code,
+                message: extract_detail(&text),
+            },
+        })
     }
 
     /// Запрашивает одноразовый токен для входа через Telegram-бота.
@@ -288,7 +362,16 @@ impl ApiClient {
 fn extract_detail(body: &str) -> String {
     serde_json::from_str::<serde_json::Value>(body)
         .ok()
-        .and_then(|v| v.get("detail").and_then(|d| d.as_str()).map(str::to_string))
+        .and_then(|v| {
+            let detail = v.get("detail")?;
+            // Обычно строка; у бизнес-ошибок (например, «не хватает средств») — объект с `message`.
+            detail.as_str().map(str::to_string).or_else(|| {
+                detail
+                    .get("message")
+                    .and_then(|m| m.as_str())
+                    .map(str::to_string)
+            })
+        })
         .unwrap_or_else(|| body.to_string())
 }
 
@@ -296,6 +379,125 @@ fn extract_detail(body: &str) -> String {
 mod tests {
     use super::*;
     use mockito::Server;
+
+    #[tokio::test]
+    async fn every_request_identifies_the_desktop_client() {
+        let mut server = Server::new_async().await;
+        let mock = server
+            .mock("GET", "/api/cabinet/ping")
+            .match_header(
+                "x-zexor-client",
+                mockito::Matcher::Regex("^desktop/[0-9]+\\.[0-9]+\\.[0-9]+".to_string()),
+            )
+            .with_status(200)
+            .with_body("{}")
+            .create_async()
+            .await;
+
+        let client = ApiClient::new(server.url());
+        client
+            .raw_request("GET", "/api/cabinet/ping", "t", None)
+            .await
+            .unwrap();
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn raw_request_sends_bearer_and_returns_json() {
+        let mut server = Server::new_async().await;
+        let mock = server
+            .mock("POST", "/api/cabinet/subscription/protocol")
+            .match_header("authorization", "Bearer tok")
+            .match_body(mockito::Matcher::Json(
+                serde_json::json!({"protocol": "wireguard"}),
+            ))
+            .with_status(200)
+            .with_body(r#"{"active_protocol":"wireguard"}"#)
+            .create_async()
+            .await;
+
+        let client = ApiClient::new(server.url());
+        let value = client
+            .raw_request(
+                "post",
+                "/api/cabinet/subscription/protocol",
+                "tok",
+                Some(serde_json::json!({"protocol": "wireguard"})),
+            )
+            .await
+            .unwrap();
+        assert_eq!(value["active_protocol"], "wireguard");
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn raw_request_rejects_foreign_or_traversal_paths() {
+        let client = ApiClient::new("http://127.0.0.1:1");
+        for path in [
+            "/api/other/x",
+            "https://evil.example/api/cabinet/x",
+            "/api/cabinet/../admin",
+            "api/cabinet/x",
+        ] {
+            let err = client
+                .raw_request("GET", path, "t", None)
+                .await
+                .unwrap_err();
+            assert!(
+                matches!(err, ApiError::Server { status: 400, .. }),
+                "{path}: {err:?}"
+            );
+        }
+        let err = client
+            .raw_request("TRACE", "/api/cabinet/x", "t", None)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, ApiError::Server { status: 400, .. }));
+    }
+
+    #[tokio::test]
+    async fn raw_request_maps_errors_and_nested_detail_message() {
+        let mut server = Server::new_async().await;
+        let _unauth = server
+            .mock("GET", "/api/cabinet/a")
+            .with_status(401)
+            .create_async()
+            .await;
+        let _biz = server
+            .mock("POST", "/api/cabinet/b")
+            .with_status(400)
+            .with_body(r#"{"detail":{"code":"insufficient_funds","message":"Не хватает 100 ₽"}}"#)
+            .create_async()
+            .await;
+        let _empty = server
+            .mock("DELETE", "/api/cabinet/c")
+            .with_status(204)
+            .create_async()
+            .await;
+
+        let client = ApiClient::new(server.url());
+        assert!(matches!(
+            client.raw_request("GET", "/api/cabinet/a", "t", None).await,
+            Err(ApiError::Unauthorized)
+        ));
+        match client
+            .raw_request("POST", "/api/cabinet/b", "t", None)
+            .await
+        {
+            Err(ApiError::Server {
+                status: 400,
+                message,
+            }) => assert_eq!(message, "Не хватает 100 ₽"),
+            other => panic!("ожидалась ошибка 400 с message, получено {other:?}"),
+        }
+        assert_eq!(
+            client
+                .raw_request("DELETE", "/api/cabinet/c", "t", None)
+                .await
+                .unwrap(),
+            serde_json::Value::Null
+        );
+    }
 
     #[tokio::test]
     async fn login_returns_tokens_on_success() {

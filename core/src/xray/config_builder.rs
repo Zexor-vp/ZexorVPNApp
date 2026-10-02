@@ -6,11 +6,20 @@
 
 use serde_json::{json, Map, Value};
 
+use super::node::Node;
 use super::parser::{Security, VlessNode};
+use super::routing;
+use super::wireguard::WgNode;
 
-/// Сколько доменов класть в одно правило маршрутизации. Xray спокойно ест
-/// длинные списки, но дробление упрощает чтение конфига и его диффы.
-const DOMAINS_PER_RULE: usize = 1000;
+/// Как трафик попадает в туннель: через системный прокси (только приложения, которые его уважают) или
+/// через виртуальный сетевой адаптер (весь трафик системы, нужны права администратора).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TunnelMode {
+    #[default]
+    Proxy,
+    Tun,
+}
 
 #[derive(Debug, Clone)]
 pub struct ConfigOptions {
@@ -18,9 +27,21 @@ pub struct ConfigOptions {
     pub http_port: u16,
     /// Домены для блокировки (адблок). Пустой список — фича выключена.
     pub adblock_domains: Vec<String>,
+    /// Домены-исключения: идут через туннель как обычно, даже если попали в блок-лист.
+    pub adblock_allow_domains: Vec<String>,
     /// Пускать трафик к приватным адресам мимо туннеля (принтеры, роутер, NAS).
     pub bypass_private: bool,
     pub log_level: String,
+    /// Куда xray пишет журнал доступа. Нужен только основному туннелю — по нему считается
+    /// счётчик заблокированной рекламы; проверочные запуски журнал не пишут.
+    pub access_log_path: Option<String>,
+    pub mode: TunnelMode,
+    /// Процессы, которые всегда идут напрямую (`chrome.exe`, `steam`, полные пути, `папка/`).
+    pub direct_processes: Vec<String>,
+    /// `Some` — режим «только выбранные приложения через VPN», остальные напрямую.
+    pub vpn_only_processes: Option<Vec<String>>,
+    /// Российские сайты (.ru, .su, .рф) напрямую — для собственного балансировщика, как в панельном «AUTO».
+    pub bypass_ru: bool,
 }
 
 impl Default for ConfigOptions {
@@ -29,8 +50,14 @@ impl Default for ConfigOptions {
             socks_port: 10808,
             http_port: 10809,
             adblock_domains: Vec::new(),
+            adblock_allow_domains: Vec::new(),
             bypass_private: true,
             log_level: "warning".to_string(),
+            access_log_path: None,
+            mode: TunnelMode::Proxy,
+            direct_processes: Vec::new(),
+            vpn_only_processes: None,
+            bypass_ru: true,
         }
     }
 }
@@ -38,7 +65,7 @@ impl Default for ConfigOptions {
 /// Собирает полный конфиг xray для одного выбранного узла.
 pub fn build_config(node: &VlessNode, opts: &ConfigOptions) -> Value {
     json!({
-        "log": { "loglevel": opts.log_level },
+        "log": build_log(opts),
         "inbounds": build_inbounds(opts),
         "outbounds": build_outbounds(node),
         "routing": {
@@ -48,8 +75,58 @@ pub fn build_config(node: &VlessNode, opts: &ConfigOptions) -> Value {
     })
 }
 
-fn build_inbounds(opts: &ConfigOptions) -> Value {
+/// Собирает конфиг xray для узла любого поддерживаемого протокола.
+pub fn build_node_config(node: &Node, opts: &ConfigOptions) -> Value {
+    match node {
+        Node::Vless(vless) => build_config(vless, opts),
+        Node::WireGuard(wg) => json!({
+            "log": build_log(opts),
+            "inbounds": build_inbounds(opts),
+            "outbounds": build_wireguard_outbounds(wg),
+            "routing": {
+                "domainStrategy": "IPIfNonMatch",
+                "rules": build_routing_rules(opts),
+            }
+        }),
+        Node::Profile(profile) => routing::profile_config(profile, opts),
+    }
+}
+
+/// WireGuard как outbound xray (пользовательское пространство, без TUN-драйвера) —
+/// та же форма, что панель отдаёт Happ в JSON-профиле.
+pub(super) fn build_wireguard_outbounds(node: &WgNode) -> Value {
     json!([
+        {
+            "tag": "proxy",
+            "protocol": "wireguard",
+            "settings": {
+                "secretKey": node.private_key,
+                "address": [node.address],
+                "peers": [{
+                    "publicKey": node.public_key,
+                    "endpoint": format!("{}:{}", node.server_address, node.port),
+                    "allowedIPs": ["0.0.0.0/0", "::/0"],
+                    "keepAlive": 25,
+                }],
+                "mtu": 1420,
+            },
+        },
+        { "tag": "direct", "protocol": "freedom", "settings": { "domainStrategy": "UseIP" } },
+        { "tag": "block", "protocol": "blackhole", "settings": { "response": { "type": "none" } } }
+    ])
+}
+
+pub(super) fn build_log(opts: &ConfigOptions) -> Value {
+    let mut log = serde_json::Map::new();
+    log.insert("loglevel".into(), json!(opts.log_level));
+    if let Some(path) = &opts.access_log_path {
+        log.insert("access".into(), json!(path));
+    }
+    Value::Object(log)
+}
+
+pub(super) fn build_inbounds(opts: &ConfigOptions) -> Value {
+    let mut inbounds = json!([
         {
             "tag": "socks-in",
             "listen": "127.0.0.1",
@@ -65,10 +142,32 @@ fn build_inbounds(opts: &ConfigOptions) -> Value {
             "protocol": "http",
             "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
         }
-    ])
+    ]);
+    if opts.mode == TunnelMode::Tun {
+        // xray сам создаёт адаптер (wintun), назначает ему адрес и DNS, прописывает маршруты и привязывает
+        // собственные исходящие к физическому интерфейсу — поэтому петли «туннель через туннель» нет.
+        inbounds
+            .as_array_mut()
+            .expect("массив inbound'ов")
+            .push(json!({
+                "tag": "tun-in",
+                "port": 0,
+                "protocol": "tun",
+                "settings": {
+                    "name": "ZexorVPN",
+                    "mtu": 1500,
+                    "gateway": ["198.18.0.1/15"],
+                    "dns": ["1.1.1.1", "8.8.8.8"],
+                    "autoSystemRoutingTable": ["0.0.0.0/0", "::/0"],
+                    "autoOutboundsInterface": "auto"
+                },
+                "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
+            }));
+    }
+    inbounds
 }
 
-fn build_outbounds(node: &VlessNode) -> Value {
+pub(super) fn build_outbounds(node: &VlessNode) -> Value {
     let mut user = Map::new();
     user.insert("id".into(), json!(node.uuid));
     user.insert("encryption".into(), json!("none"));
@@ -185,25 +284,15 @@ fn build_stream_settings(node: &VlessNode) -> Value {
 }
 
 fn build_routing_rules(opts: &ConfigOptions) -> Value {
-    let mut rules: Vec<Value> = Vec::new();
+    let proxy = json!({ "outboundTag": "proxy" });
 
-    // 1. Реклама — в blackhole. Идёт первым, чтобы срабатывать раньше всего прочего.
-    for chunk in opts.adblock_domains.chunks(DOMAINS_PER_RULE) {
-        let domains: Vec<String> = chunk
-            .iter()
-            .map(|d| normalize_domain_rule(d))
-            .filter(|d| !d.is_empty())
-            .collect();
-        if !domains.is_empty() {
-            rules.push(json!({
-                "type": "field",
-                "domain": domains,
-                "outboundTag": "block",
-            }));
-        }
+    // Пользовательские правила (адблок, приложения) идут раньше всего прочего.
+    let (mut rules, terminal) = routing::user_rules(opts, &proxy);
+    if terminal {
+        return Value::Array(rules);
     }
 
-    // 2. Локальная сеть и приватные адреса — мимо туннеля.
+    // Локальная сеть и приватные адреса — мимо туннеля.
     if opts.bypass_private {
         rules.push(json!({
             "type": "field",
@@ -212,7 +301,7 @@ fn build_routing_rules(opts: &ConfigOptions) -> Value {
         }));
     }
 
-    // 3. Всё остальное — в VPN.
+    // Всё остальное — в VPN.
     rules.push(json!({
         "type": "field",
         "network": "tcp,udp",
@@ -248,6 +337,57 @@ mod tests {
     fn reality_config(opts: ConfigOptions) -> Value {
         let node = parse_vless_uri(REALITY_URI).unwrap();
         build_config(&node, &opts)
+    }
+
+    #[test]
+    fn access_log_is_written_only_when_a_path_is_given() {
+        let cfg = reality_config(ConfigOptions::default());
+        assert!(cfg["log"].get("access").is_none());
+
+        let cfg = reality_config(ConfigOptions {
+            access_log_path: Some("C:\\data\\access.log".into()),
+            ..ConfigOptions::default()
+        });
+        assert_eq!(cfg["log"]["access"], "C:\\data\\access.log");
+    }
+
+    #[test]
+    fn allow_rules_come_before_block_rules() {
+        let opts = ConfigOptions {
+            adblock_domains: vec!["ads.example.com".into()],
+            adblock_allow_domains: vec!["good.example.com".into()],
+            ..ConfigOptions::default()
+        };
+        let cfg = reality_config(opts);
+        let rules = cfg["routing"]["rules"].as_array().unwrap();
+        assert_eq!(rules[0]["outboundTag"], "proxy");
+        assert_eq!(rules[0]["domain"][0], "domain:good.example.com");
+        assert_eq!(rules[1]["outboundTag"], "block");
+    }
+
+    #[test]
+    fn builds_wireguard_outbound_like_the_panel_profile() {
+        use crate::xray::wireguard::parse_wireguard_uri;
+        let wg = parse_wireguard_uri(
+            "wireguard://AAAA%2BBBBB%3D@203.0.113.5:51820?publickey=ZZZZ%3D&address=10.66.66.2%2F32#DE",
+        )
+        .unwrap();
+        let cfg = build_node_config(&Node::WireGuard(wg), &ConfigOptions::default());
+        let proxy = &cfg["outbounds"][0];
+        assert_eq!(proxy["protocol"], "wireguard");
+        assert_eq!(proxy["tag"], "proxy");
+        assert_eq!(proxy["settings"]["secretKey"], "AAAA+BBBB=");
+        assert_eq!(proxy["settings"]["address"][0], "10.66.66.2/32");
+        assert_eq!(proxy["settings"]["peers"][0]["publicKey"], "ZZZZ=");
+        assert_eq!(
+            proxy["settings"]["peers"][0]["endpoint"],
+            "203.0.113.5:51820"
+        );
+        assert_eq!(proxy["settings"]["peers"][0]["allowedIPs"][0], "0.0.0.0/0");
+        // inbounds и маршрутизация те же, что у VLESS: socks+http на localhost, остальное в proxy.
+        assert_eq!(cfg["inbounds"][0]["tag"], "socks-in");
+        let rules = cfg["routing"]["rules"].as_array().unwrap();
+        assert_eq!(rules.last().unwrap()["outboundTag"], "proxy");
     }
 
     #[test]

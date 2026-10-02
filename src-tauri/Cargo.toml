@@ -1,6 +1,6 @@
 [package]
 name = "zexor-vpn-desktop"
-version = "0.2.0"
+version = "0.3.0"
 description = "Zexor VPN desktop client for Windows"
 edition = "2021"
 rust-version = "1.77"
@@ -20,6 +20,10 @@ tauri-plugin-updater = "2"
 tauri-plugin-dialog = "2"
 # Перезапуск приложения после установки обновления кнопкой "Проверить обновления".
 tauri-plugin-process = "2"
+# Второй запуск не плодит ещё одну копию (и второй xray на тех же портах), а показывает окно запущенной.
+tauri-plugin-single-instance = "2"
+# Системные уведомления Windows: ответ поддержки приходит, даже когда окно спрятано в трей.
+tauri-plugin-notification = "2"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

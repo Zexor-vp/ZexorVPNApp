@@ -7,6 +7,9 @@
 use std::sync::Mutex;
 
 use tauri::AppHandle;
+use zexor_vpn_core::adblock::counter::BlockCounter;
+use zexor_vpn_core::adblock::settings::AdblockConfig;
+use zexor_vpn_core::settings::AppSettings;
 use zexor_vpn_core::{ApiClient, TokenSet, XrayProcess};
 
 /// Базовый URL API кабинета. Тот же бэкенд, что обслуживает веб-кабинет —
@@ -34,24 +37,29 @@ pub struct ConnectionState {
     pub process: Option<XrayProcess>,
     /// Remark ноды, к которой подключены — для отображения в UI.
     pub connected_node: Option<String>,
+    /// Из какой подписки взят узел (`account` или id добавленной пользователем) —
+    /// нужно, чтобы переподключиться к тому же узлу после смены настроек.
+    pub connected_source: Option<String>,
+    /// Подключение идёт в авто-режиме (балансировщик или самый быстрый сервер).
+    pub auto: bool,
 }
 
-#[derive(Debug, Clone)]
-pub struct AdblockSettings {
-    pub enabled: bool,
-}
-
-impl Default for AdblockSettings {
-    fn default() -> Self {
-        Self { enabled: true }
-    }
+/// Сколько рекламных соединений заблокировано с запуска приложения.
+#[derive(Default)]
+pub struct BlockStats {
+    /// Счётчик по журналу доступа текущего туннеля (есть только пока подключены).
+    pub counter: Option<BlockCounter>,
+    /// Накоплено по прошлым подключениям этого запуска.
+    pub accumulated: u64,
 }
 
 pub struct AppState {
     pub api: ApiClient,
     pub session: Mutex<SessionState>,
     pub connection: Mutex<ConnectionState>,
-    pub adblock: Mutex<AdblockSettings>,
+    pub adblock: Mutex<AdblockConfig>,
+    pub block_stats: Mutex<BlockStats>,
+    pub settings: Mutex<AppSettings>,
 }
 
 impl Default for AppState {
@@ -60,7 +68,9 @@ impl Default for AppState {
             api: ApiClient::new(API_BASE_URL),
             session: Mutex::new(SessionState::default()),
             connection: Mutex::new(ConnectionState::default()),
-            adblock: Mutex::new(AdblockSettings::default()),
+            adblock: Mutex::new(zexor_vpn_core::adblock::settings::load()),
+            block_stats: Mutex::new(BlockStats::default()),
+            settings: Mutex::new(zexor_vpn_core::settings::load()),
         }
     }
 }
@@ -75,6 +85,8 @@ impl AppState {
                 process.stop();
             }
             connection.connected_node = None;
+            connection.connected_source = None;
+            connection.auto = false;
         }
 
         if let Err(err) = zexor_vpn_core::proxy::restore() {

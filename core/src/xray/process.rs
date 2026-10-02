@@ -56,14 +56,25 @@ impl XrayProcess {
         std::fs::write(&config_path, serialized)
             .map_err(|e| XrayError::ConfigWrite(e.to_string()))?;
 
+        // Вывод xray никто не читает, а заполненный канал остановил бы туннель посреди сессии, поэтому
+        // уходит в файл рядом с конфигом (он же нужен, чтобы разобраться, почему xray не поднялся).
+        let (log_out, log_err) = match std::fs::File::create(config_path.with_file_name("xray.log"))
+        {
+            Ok(file) => match file.try_clone() {
+                Ok(clone) => (Stdio::from(file), Stdio::from(clone)),
+                Err(_) => (Stdio::from(file), Stdio::null()),
+            },
+            Err(_) => (Stdio::null(), Stdio::null()),
+        };
+
         let mut command = Command::new(binary);
         command
             .arg("run")
             .arg("-c")
             .arg(&config_path)
             .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stdout(log_out)
+            .stderr(log_err);
 
         #[cfg(windows)]
         {

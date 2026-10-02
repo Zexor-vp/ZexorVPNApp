@@ -1,0 +1,111 @@
+//! Подписки, которые пользователь добавил сам (кнопка «+» на главном экране).
+//!
+//! Подписка аккаунта Zexor приходит из кабинета и здесь не хранится; тут только
+//! «чужие» ссылки — например, подписка с другого сервиса, которой человек хочет
+//! пользоваться в том же приложении. Лежат обычным JSON рядом с остальными данными
+//! приложения: это не секрет уровня пароля, но и не должно жить в localStorage окна.
+
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+/// Идентификатор «встроенного» источника — подписки аккаунта.
+pub const ACCOUNT_SOURCE: &str = "account";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Source {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+}
+
+fn file_path() -> PathBuf {
+    crate::xray::process::app_data_dir().join("sources.json")
+}
+
+pub fn load() -> Vec<Source> {
+    load_from(&file_path())
+}
+
+pub fn load_from(path: &std::path::Path) -> Vec<Source> {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
+pub fn save(sources: &[Source]) -> std::io::Result<()> {
+    save_to(&file_path(), sources)
+}
+
+pub fn save_to(path: &std::path::Path, sources: &[Source]) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let text = serde_json::to_string_pretty(sources).map_err(std::io::Error::other)?;
+    std::fs::write(path, text)
+}
+
+pub fn find(id: &str) -> Option<Source> {
+    load().into_iter().find(|s| s.id == id)
+}
+
+/// Принимаем только обычные web-ссылки: подписка скачивается HTTP-запросом, а
+/// `file://` и прочие схемы — это чтение локальных файлов по команде из текстового поля.
+pub fn validate_url(raw: &str) -> Result<String, String> {
+    let trimmed = raw.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !(lower.starts_with("https://") || lower.starts_with("http://")) {
+        return Err("ссылка подписки должна начинаться с https://".to_string());
+    }
+    if trimmed.len() > 4096 || trimmed.chars().any(char::is_whitespace) {
+        return Err("некорректная ссылка подписки".to_string());
+    }
+    Ok(trimmed.to_string())
+}
+
+pub fn new_id() -> String {
+    let mut bytes = [0u8; 6];
+    let _ = getrandom::getrandom(&mut bytes);
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn roundtrip_through_disk() {
+        let dir = std::env::temp_dir().join(format!("zexor-sources-{}", new_id()));
+        let path = dir.join("sources.json");
+        assert!(load_from(&path).is_empty());
+
+        let list = vec![Source {
+            id: "a1".into(),
+            name: "Другой сервис".into(),
+            url: "https://example.com/sub".into(),
+        }];
+        save_to(&path, &list).unwrap();
+        assert_eq!(load_from(&path), list);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn corrupt_file_is_treated_as_empty() {
+        let dir = std::env::temp_dir().join(format!("zexor-sources-{}", new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("sources.json");
+        std::fs::write(&path, "{ not json").unwrap();
+        assert!(load_from(&path).is_empty());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn only_http_links_are_accepted() {
+        assert!(validate_url(" https://sub.example.com/abc ").is_ok());
+        assert!(validate_url("http://sub.example.com/abc").is_ok());
+        assert!(validate_url("file:///C:/secret.txt").is_err());
+        assert!(validate_url("vless://x@h:1").is_err());
+        assert!(validate_url("https://a b").is_err());
+    }
+}
