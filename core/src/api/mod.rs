@@ -90,6 +90,46 @@ pub struct SubscriptionStatusResponse {
     pub subscription: Option<SubscriptionData>,
 }
 
+/// Одноразовый токен входа через Telegram: пользователь открывает
+/// `t.me/{bot_username}?start=webauth_{token}`, а клиент поллит `deeplink_poll`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeepLinkToken {
+    pub token: String,
+    pub bot_username: String,
+    pub expires_in: i64,
+}
+
+/// Результат одного опроса входа через Telegram.
+#[derive(Debug, Clone)]
+pub enum LoginPoll {
+    /// Пользователь ещё не подтвердил вход в боте.
+    Pending,
+    /// Токен истёк или уже использован — нужно начать заново.
+    Expired,
+    Completed(LoginResponse),
+}
+
+/// Результат одного опроса «парного» входа через браузер
+/// (`/cabinet/adblock/pair/status`, та же страница входа, что и у MyBlock).
+#[derive(Debug, Clone)]
+pub enum PairPoll {
+    Pending,
+    Expired,
+    Completed {
+        access_token: String,
+        refresh_token: String,
+    },
+}
+
+#[derive(Debug, Deserialize)]
+struct PairStatusBody {
+    status: String,
+    #[serde(default)]
+    access_token: Option<String>,
+    #[serde(default)]
+    refresh_token: Option<String>,
+}
+
 pub struct ApiClient {
     base_url: String,
     http: reqwest::Client,
@@ -153,6 +193,64 @@ impl ApiClient {
 
         self.parse_or_error(response, |_, _| ApiError::Unauthorized)
             .await
+    }
+
+    /// Запрашивает одноразовый токен для входа через Telegram-бота.
+    pub async fn deeplink_request(&self) -> Result<DeepLinkToken, ApiError> {
+        let response = self
+            .http
+            .post(self.url("/api/cabinet/auth/deeplink/request"))
+            .send()
+            .await?;
+
+        self.parse_or_error(response, |_, _| ApiError::Unauthorized)
+            .await
+    }
+
+    /// Один опрос входа через Telegram. Бэкенд отвечает 202, пока вход не
+    /// подтверждён, 410 — если токен истёк/использован, 200 с парой токенов —
+    /// при успехе (токен при этом гасится на сервере, повторно его не получить).
+    pub async fn deeplink_poll(&self, token: &str) -> Result<LoginPoll, ApiError> {
+        let response = self
+            .http
+            .post(self.url("/api/cabinet/auth/deeplink/poll"))
+            .json(&serde_json::json!({ "token": token }))
+            .send()
+            .await?;
+
+        match response.status().as_u16() {
+            202 => Ok(LoginPoll::Pending),
+            410 => Ok(LoginPoll::Expired),
+            _ => self
+                .parse_or_error(response, |_, _| ApiError::Unauthorized)
+                .await
+                .map(LoginPoll::Completed),
+        }
+    }
+
+    /// Один опрос браузерного входа (Google / любой способ на веб-странице).
+    /// `state` генерирует само приложение; сервер отдаёт токены один раз и
+    /// удаляет сессию.
+    pub async fn pair_status(&self, state: &str) -> Result<PairPoll, ApiError> {
+        let response = self
+            .http
+            .get(self.url("/api/cabinet/adblock/pair/status"))
+            .query(&[("state", state)])
+            .send()
+            .await?;
+
+        let body: PairStatusBody = self
+            .parse_or_error(response, |_, _| ApiError::Unauthorized)
+            .await?;
+
+        match (body.status.as_str(), body.access_token, body.refresh_token) {
+            ("completed", Some(access_token), Some(refresh_token)) => Ok(PairPoll::Completed {
+                access_token,
+                refresh_token,
+            }),
+            ("expired", _, _) => Ok(PairPoll::Expired),
+            _ => Ok(PairPoll::Pending),
+        }
     }
 
     /// Общая обработка ответа: 2xx → десериализуем; 401 → отдаём вызывающему
@@ -389,5 +487,139 @@ mod tests {
         let client = ApiClient::new(server.url());
         let err = client.subscription_info("a").await.unwrap_err();
         assert!(matches!(err, ApiError::Decode(_)));
+    }
+
+    #[tokio::test]
+    async fn deeplink_request_returns_token_and_bot() {
+        let mut server = Server::new_async().await;
+        server
+            .mock("POST", "/api/cabinet/auth/deeplink/request")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"token":"tok123","bot_username":"Zexorvpnbot","expires_in":300}"#)
+            .create_async()
+            .await;
+
+        let client = ApiClient::new(server.url());
+        let result = client.deeplink_request().await.unwrap();
+        assert_eq!(result.token, "tok123");
+        assert_eq!(result.bot_username, "Zexorvpnbot");
+    }
+
+    #[tokio::test]
+    async fn deeplink_poll_202_is_pending() {
+        let mut server = Server::new_async().await;
+        server
+            .mock("POST", "/api/cabinet/auth/deeplink/poll")
+            .match_body(mockito::Matcher::Json(
+                serde_json::json!({ "token": "tok123" }),
+            ))
+            .with_status(202)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"detail":"Waiting for confirmation"}"#)
+            .create_async()
+            .await;
+
+        let client = ApiClient::new(server.url());
+        assert!(matches!(
+            client.deeplink_poll("tok123").await.unwrap(),
+            LoginPoll::Pending
+        ));
+    }
+
+    #[tokio::test]
+    async fn deeplink_poll_410_is_expired() {
+        let mut server = Server::new_async().await;
+        server
+            .mock("POST", "/api/cabinet/auth/deeplink/poll")
+            .with_status(410)
+            .with_body(r#"{"detail":"Token expired or not found"}"#)
+            .create_async()
+            .await;
+
+        let client = ApiClient::new(server.url());
+        assert!(matches!(
+            client.deeplink_poll("tok123").await.unwrap(),
+            LoginPoll::Expired
+        ));
+    }
+
+    #[tokio::test]
+    async fn deeplink_poll_200_returns_tokens_for_telegram_only_user() {
+        let mut server = Server::new_async().await;
+        server
+            .mock("POST", "/api/cabinet/auth/deeplink/poll")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                r#"{"access_token":"a","refresh_token":"r","token_type":"bearer","expires_in":900,
+                    "user":{"id":7,"email":null,"first_name":"Иван"}}"#,
+            )
+            .create_async()
+            .await;
+
+        let client = ApiClient::new(server.url());
+        match client.deeplink_poll("tok123").await.unwrap() {
+            LoginPoll::Completed(login) => {
+                assert_eq!(login.refresh_token, "r");
+                assert_eq!(login.user.email, None);
+            }
+            other => panic!("ожидался Completed, получено {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn pair_status_maps_all_three_states() {
+        let mut server = Server::new_async().await;
+        server
+            .mock("GET", "/api/cabinet/adblock/pair/status")
+            .match_query(mockito::Matcher::UrlEncoded(
+                "state".into(),
+                "s-pending".into(),
+            ))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"status":"pending","access_token":null,"refresh_token":null}"#)
+            .create_async()
+            .await;
+        server
+            .mock("GET", "/api/cabinet/adblock/pair/status")
+            .match_query(mockito::Matcher::UrlEncoded(
+                "state".into(),
+                "s-done".into(),
+            ))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"status":"completed","access_token":"A","refresh_token":"R"}"#)
+            .create_async()
+            .await;
+        server
+            .mock("GET", "/api/cabinet/adblock/pair/status")
+            .match_query(mockito::Matcher::UrlEncoded("state".into(), "s-old".into()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"status":"expired","access_token":null,"refresh_token":null}"#)
+            .create_async()
+            .await;
+
+        let client = ApiClient::new(server.url());
+        assert!(matches!(
+            client.pair_status("s-pending").await.unwrap(),
+            PairPoll::Pending
+        ));
+        assert!(matches!(
+            client.pair_status("s-old").await.unwrap(),
+            PairPoll::Expired
+        ));
+        match client.pair_status("s-done").await.unwrap() {
+            PairPoll::Completed {
+                access_token,
+                refresh_token,
+            } => {
+                assert_eq!(access_token, "A");
+                assert_eq!(refresh_token, "R");
+            }
+            other => panic!("ожидался Completed, получено {other:?}"),
+        }
     }
 }

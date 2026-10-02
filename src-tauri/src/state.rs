@@ -14,6 +14,11 @@ use zexor_vpn_core::{ApiClient, TokenSet, XrayProcess};
 /// ним же (см. `ApiClient::url`, пути вида `/api/cabinet/...`).
 pub const API_BASE_URL: &str = "https://cabinet.zexorvpn.site";
 
+/// Адрес веб-кабинета, на котором открывается страница входа в браузере.
+/// Именно этот домен зарегистрирован как redirect URI у Google OAuth, поэтому
+/// вход через Google возможен только здесь (а не на `API_BASE_URL`).
+pub const WEB_LOGIN_BASE_URL: &str = "https://cabinet.zexor.site";
+
 /// Имя сервиса в системном хранилище учётных данных (Windows Credential
 /// Manager через крейт `keyring`) — под этим именем ищем refresh-токен.
 pub const CREDENTIAL_SERVICE: &str = "ZexorVPN";

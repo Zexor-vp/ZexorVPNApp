@@ -2,10 +2,13 @@
 
 use serde::Serialize;
 use tauri::State;
-use zexor_vpn_core::TokenSet;
+use zexor_vpn_core::{ApiError, LoginPoll, PairPoll, TokenSet};
 
-use super::{clear_stored_session, ensure_valid_access_token, persist_refresh_token};
-use crate::state::AppState;
+use super::{
+    clear_stored_session, ensure_valid_access_token, open_in_browser, persist_refresh_token,
+    random_state,
+};
+use crate::state::{AppState, WEB_LOGIN_BASE_URL};
 
 #[derive(Debug, Serialize)]
 pub struct SessionInfo {
@@ -32,6 +35,108 @@ impl From<super::AuthError> for CommandError {
                 CommandError::Network(err.to_string())
             }
             other => CommandError::Other(other.to_string()),
+        }
+    }
+}
+
+fn api_error(err: ApiError) -> CommandError {
+    CommandError::from(super::AuthError::Api(err))
+}
+
+/// Общий финал любого способа входа: refresh на диск (раньше, чем в память —
+/// см. порядок в `ensure_valid_access_token`), затем пара токенов в сессию.
+fn store_session(
+    state: &AppState,
+    access_token: String,
+    refresh_token: String,
+) -> Result<(), CommandError> {
+    persist_refresh_token(&refresh_token).map_err(CommandError::from)?;
+    state.session.lock().unwrap().tokens = Some(TokenSet {
+        access_token,
+        refresh_token,
+    });
+    Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct TelegramLoginStart {
+    pub token: String,
+}
+
+/// Вход через Telegram: получаем одноразовый токен и открываем бота с
+/// `/start webauth_<token>`; дальше фронтенд поллит `poll_telegram_login`.
+#[tauri::command]
+pub async fn start_telegram_login(
+    state: State<'_, AppState>,
+) -> Result<TelegramLoginStart, CommandError> {
+    let link = state.api.deeplink_request().await.map_err(api_error)?;
+    let url = format!(
+        "https://t.me/{}?start=webauth_{}",
+        link.bot_username, link.token
+    );
+    open_in_browser(&url).map_err(CommandError::from)?;
+    Ok(TelegramLoginStart { token: link.token })
+}
+
+/// `Ok(None)` — пользователь ещё не подтвердил вход в боте.
+#[tauri::command]
+pub async fn poll_telegram_login(
+    state: State<'_, AppState>,
+    token: String,
+) -> Result<Option<SessionInfo>, CommandError> {
+    match state.api.deeplink_poll(&token).await.map_err(api_error)? {
+        LoginPoll::Pending => Ok(None),
+        LoginPoll::Expired => Err(CommandError::from(super::AuthError::LoginExpired)),
+        LoginPoll::Completed(response) => {
+            store_session(&state, response.access_token, response.refresh_token)?;
+            Ok(Some(SessionInfo {
+                email: response.user.email,
+            }))
+        }
+    }
+}
+
+/// Вход через веб-страницу кабинета (Google и любой другой способ): открываем
+/// `/adblock/connect?state=…&source=desktop[&provider=google]` и возвращаем
+/// `state`, по которому фронтенд поллит `poll_browser_login`.
+#[tauri::command]
+pub async fn start_browser_login(provider: Option<String>) -> Result<String, CommandError> {
+    let pair_state = random_state().map_err(CommandError::from)?;
+    let mut url = format!("{WEB_LOGIN_BASE_URL}/adblock/connect?state={pair_state}&source=desktop");
+    if let Some(provider) = provider {
+        // Только короткие латинские имена провайдеров — в URL больше ничего не подставляем.
+        if !provider.is_empty()
+            && provider.len() <= 32
+            && provider
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            url.push_str(&format!("&provider={provider}"));
+        }
+    }
+    open_in_browser(&url).map_err(CommandError::from)?;
+    Ok(pair_state)
+}
+
+#[tauri::command]
+pub async fn poll_browser_login(
+    state: State<'_, AppState>,
+    pair_state: String,
+) -> Result<Option<SessionInfo>, CommandError> {
+    match state
+        .api
+        .pair_status(&pair_state)
+        .await
+        .map_err(api_error)?
+    {
+        PairPoll::Pending => Ok(None),
+        PairPoll::Expired => Err(CommandError::from(super::AuthError::LoginExpired)),
+        PairPoll::Completed {
+            access_token,
+            refresh_token,
+        } => {
+            store_session(&state, access_token, refresh_token)?;
+            Ok(Some(SessionInfo { email: None }))
         }
     }
 }

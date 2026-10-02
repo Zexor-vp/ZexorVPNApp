@@ -11,7 +11,10 @@ pub mod auth;
 pub mod proxy;
 pub mod xray;
 
-pub use api::{ApiClient, ApiError, SubscriptionData, SubscriptionStatusResponse};
+pub use api::{
+    ApiClient, ApiError, DeepLinkToken, LoginPoll, PairPoll, SubscriptionData,
+    SubscriptionStatusResponse,
+};
 pub use auth::{jwt_expiry, TokenAction, TokenSet};
 pub use xray::config_builder::{build_config, ConfigOptions};
 pub use xray::parser::{parse_subscription, parse_vless_uri, ParseError, Security, VlessNode};

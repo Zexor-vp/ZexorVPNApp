@@ -50,6 +50,20 @@ export function needsLogin(err: unknown): boolean {
 export const login = (email: string, password: string): Promise<SessionInfo> =>
   invoke('login', { email, password });
 
+export const startTelegramLogin = (): Promise<{ token: string }> => invoke('start_telegram_login');
+
+/** `null` — пользователь ещё не подтвердил вход в боте. */
+export const pollTelegramLogin = (token: string): Promise<SessionInfo | null> =>
+  invoke('poll_telegram_login', { token });
+
+/** Открывает веб-страницу входа в браузере и возвращает `state` для поллинга. */
+export const startBrowserLogin = (provider?: string): Promise<string> =>
+  invoke('start_browser_login', { provider: provider ?? null });
+
+/** `null` — пользователь ещё не завершил вход в браузере. */
+export const pollBrowserLogin = (pairState: string): Promise<SessionInfo | null> =>
+  invoke('poll_browser_login', { pairState });
+
 export const logout = (): Promise<void> => invoke('logout');
 
 export const currentSession = (): Promise<SessionInfo | null> => invoke('current_session');

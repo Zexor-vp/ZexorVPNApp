@@ -21,6 +21,36 @@ pub enum AuthError {
     Api(#[from] ApiError),
     #[error("не удалось обратиться к хранилищу учётных данных: {0}")]
     Credential(String),
+    #[error("не удалось открыть браузер: {0}")]
+    Browser(String),
+    #[error("время ожидания входа истекло — попробуйте ещё раз")]
+    LoginExpired,
+}
+
+/// Открывает ссылку в браузере по умолчанию. На Windows через
+/// `rundll32 url.dll,FileProtocolHandler` — ему URL передаётся одним аргументом
+/// без участия командной строки, поэтому `&` в query-строке ничего не ломает
+/// (в отличие от `cmd /C start`).
+pub fn open_in_browser(url: &str) -> Result<(), AuthError> {
+    #[cfg(windows)]
+    let spawned = std::process::Command::new("rundll32")
+        .args(["url.dll,FileProtocolHandler", url])
+        .spawn();
+    #[cfg(not(windows))]
+    let spawned = std::process::Command::new("xdg-open").arg(url).spawn();
+
+    spawned
+        .map(|_| ())
+        .map_err(|e| AuthError::Browser(e.to_string()))
+}
+
+/// 32 случайных байта в hex (64 символа) — `state` браузерного входа. Сервер
+/// требует минимум 16 символов; такой длины достаточно, чтобы его нельзя было
+/// угадать и перехватить чужие токены.
+pub fn random_state() -> Result<String, AuthError> {
+    let mut bytes = [0u8; 32];
+    getrandom::getrandom(&mut bytes).map_err(|e| AuthError::Browser(e.to_string()))?;
+    Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
 }
 
 fn now_unix() -> i64 {
