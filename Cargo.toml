@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["core", "src-tauri"]
+members = ["core", "src-tauri", "tauri-plugin-zexor-vpn"]
 
 [workspace.package]
 version = "0.3.5"

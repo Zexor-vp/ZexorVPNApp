@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-establish"
+description = "Enables the establish command without any pre-configured scope."
+commands.allow = ["establish"]
+
+[[permission]]
+identifier = "deny-establish"
+description = "Denies the establish command without any pre-configured scope."
+commands.deny = ["establish"]

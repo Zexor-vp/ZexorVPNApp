@@ -47,6 +47,7 @@ keyring = { version = "3", features = ["windows-native"] }
 # На Android ссылки (вход через браузер, оплата) открывает системный обработчик.
 [target.'cfg(target_os = "android")'.dependencies]
 tauri-plugin-opener = "2"
+tauri-plugin-zexor-vpn = { path = "../tauri-plugin-zexor-vpn" }
 
 [dev-dependencies]
 pretty_assertions = "1"

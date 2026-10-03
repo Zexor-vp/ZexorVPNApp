@@ -1,0 +1,16 @@
+[package]
+name = "tauri-plugin-zexor-vpn"
+version = "0.1.0"
+description = "Android: системный VPN-сервис (VpnService), отдающий приложению TUN-дескриптор для xray"
+edition = "2021"
+rust-version = "1.77"
+links = "tauri-plugin-zexor-vpn"
+
+[dependencies]
+tauri = { version = "2" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
