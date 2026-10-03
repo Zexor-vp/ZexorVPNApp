@@ -204,6 +204,7 @@ const dict: Record<string, string> = {
   "Заработано": "Ganado",
   "комиссия {percent}%": "comisión {percent} %",
   "Друг указывает ваш код при регистрации — вы получаете процент с его пополнений.": "Un amigo introduce tu código al registrarse: recibes un porcentaje de sus recargas.",
+  "Друг указывает ваш код при регистрации — вы получаете {percent}% с каждого его пополнения.": "Un amigo introduce tu código al registrarse: recibes el {percent} % de cada recarga que haga.",
   "Реферальная программа недоступна.": "El programa de referidos no está disponible.",
   "Приложение": "Aplicación",
   "Обновления": "Actualizaciones",

@@ -158,10 +158,9 @@ export default function ProfilePage({ onLoggedOut }: Props) {
                 <span className="tile-value">
                   {formatMoney(referral.data.total_earnings_kopeks, user?.currency ?? 'RUB')}
                 </span>
-                <span className="muted">{t('комиссия {percent}%', { percent: referral.data.commission_percent })}</span>
               </div>
             </div>
-            <span className="muted">{t('Друг указывает ваш код при регистрации — вы получаете процент с его пополнений.')}</span>
+            <span className="muted">{t('Друг указывает ваш код при регистрации — вы получаете {percent}% с каждого его пополнения.', { percent: referral.data.commission_percent })}</span>
           </>
         ) : referral.loading ? (
           <div className="empty">
