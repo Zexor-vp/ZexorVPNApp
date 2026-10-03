@@ -63,6 +63,8 @@ pub async fn download_subscription(url: &str) -> Result<String, ConnectError> {
 /// в них лежат серверные правила маршрутизации и балансировщик «AUTO». Чужим сервисам идентификатор
 /// устройства не отправляем.
 async fn download_account_subscription(url: &str) -> Result<String, ConnectError> {
+    #[cfg(target_os = "android")]
+    android::ready().await;
     let hwid = zexor_vpn_core::hwid::load_or_create();
     download_with_headers(url, zexor_vpn_core::hwid::subscription_headers(&hwid)).await
 }

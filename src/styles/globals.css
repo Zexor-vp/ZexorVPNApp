@@ -931,6 +931,9 @@ h2 {
 /* Спиннер */
 
 .spinner {
+  flex: none;
+  box-sizing: border-box;
+  aspect-ratio: 1 / 1;
   width: 16px;
   height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.3);
@@ -942,6 +945,7 @@ h2 {
 .spinner-lg {
   width: 32px;
   height: 32px;
+  min-width: 32px;
   border-width: 3px;
   color: var(--accent);
 }
@@ -1712,11 +1716,34 @@ h2 {
 
 .bubble-photo {
   display: block;
+  /* Баббл — flex-колонка: без align-self картинка растягивалась бы на всю ширину при ограниченной высоте и плыла. */
+  align-self: flex-start;
+  width: 14rem;
   max-width: 100%;
-  max-height: 16rem;
+  height: auto;
+  max-height: 18rem;
   margin-top: 0.4rem;
   border-radius: 10px;
+  object-fit: cover;
   cursor: pointer;
+}
+
+/* Узкое окно: поле ответа стоит над нижней панелью той же ширины и по центру, как сама панель. Через fixed, а не
+   sticky: у sticky отступ считается от края содержимого прокручиваемого блока, а там ещё 7rem запаса под панель. */
+@media (max-width: 899.98px) {
+  .composer {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 28px);
+    max-width: 440px;
+    bottom: calc(5.6rem + var(--safe-bottom));
+    margin: 0;
+  }
+
+  .page-body:has(> .composer) {
+    padding-bottom: 6rem;
+  }
 }
 
 @media (min-width: 900px) {

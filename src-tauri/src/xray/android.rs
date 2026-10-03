@@ -35,6 +35,7 @@ pub async fn init_paths(app: &AppHandle) {
     match vpn.info().await {
         Ok(info) => {
             crate::error_report::set_device(&info.os_version, &info.model);
+            zexor_vpn_core::hwid::set_override(&info.device_id);
             let paths = Paths {
                 lib_dir: PathBuf::from(info.lib_dir),
                 files_dir: PathBuf::from(info.files_dir),
@@ -43,6 +44,17 @@ pub async fn init_paths(app: &AppHandle) {
             let _ = PATHS.set(paths);
         }
         Err(err) => tracing::error!(?err, "не удалось получить пути приложения от плагина"),
+    }
+}
+
+/// Ждёт, пока плагин сообщит пути и идентификатор устройства (обычно это миллисекунды после запуска): подписку
+/// нельзя скачивать раньше, иначе панель увидит временный идентификатор и займёт лишнее место в лимите устройств.
+pub async fn ready() {
+    for _ in 0..40 {
+        if PATHS.get().is_some() {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
 }
 

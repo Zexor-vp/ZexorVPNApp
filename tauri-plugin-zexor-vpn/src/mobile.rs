@@ -42,6 +42,9 @@ pub struct Info {
     pub model: String,
     #[serde(default)]
     pub os_version: String,
+    /// Постоянный идентификатор устройства (переживает переустановку).
+    #[serde(default)]
+    pub device_id: String,
 }
 
 #[derive(Debug, Deserialize)]

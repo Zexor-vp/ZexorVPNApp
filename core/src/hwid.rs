@@ -5,6 +5,17 @@
 //! должно присылать один и тот же стабильный id, иначе каждый запуск будет «новым устройством».
 
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+
+/// Идентификатор, заданный системой (Android: производный от ANDROID_ID). Он переживает переустановку приложения —
+/// иначе каждая переустановка занимала бы новое место в лимите устройств.
+static OVERRIDE: OnceLock<String> = OnceLock::new();
+
+pub fn set_override(id: &str) {
+    if is_valid(id) {
+        let _ = OVERRIDE.set(id.to_string());
+    }
+}
 
 pub fn file_path() -> PathBuf {
     crate::xray::process::app_data_dir().join("device_id")
@@ -12,6 +23,9 @@ pub fn file_path() -> PathBuf {
 
 /// Читает сохранённый id или создаёт новый (случайный UUID v4) и сохраняет его.
 pub fn load_or_create() -> String {
+    if let Some(id) = OVERRIDE.get() {
+        return id.clone();
+    }
     load_or_create_at(&file_path())
 }
 

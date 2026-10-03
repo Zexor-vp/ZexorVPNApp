@@ -170,12 +170,24 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
         ViewCompat.requestApplyInsets(webView)
     }
 
+    /**
+     * Постоянный идентификатор устройства для панели (лимит устройств): производный от ANDROID_ID, который не меняется
+     * при переустановке, пока приложение подписано тем же ключом. Формат UUID — как у остальных платформ.
+     */
+    private fun stableDeviceId(): String = try {
+        val androidId = android.provider.Settings.Secure.getString(activity.contentResolver, android.provider.Settings.Secure.ANDROID_ID)
+        if (androidId.isNullOrBlank()) "" else java.util.UUID.nameUUIDFromBytes("zexor:$androidId".toByteArray()).toString()
+    } catch (_: Exception) {
+        ""
+    }
+
     @Command
     fun info(invoke: Invoke) {
         val result = JSObject()
         result.put("libDir", activity.applicationInfo.nativeLibraryDir)
         result.put("filesDir", activity.filesDir.absolutePath)
         result.put("running", ZexorVpnService.running)
+        result.put("deviceId", stableDeviceId())
         result.put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
         result.put("osVersion", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         invoke.resolve(result)
