@@ -1,7 +1,7 @@
 //! Отправка ошибок и вылетов приложения на сервер (раздел «Ошибки приложений» в админ-панели кабинета).
 //!
 //! Без идентификатора пользователя и IP: версия приложения, система, модель устройства и текст ошибки.
-//! Уважает тот же переключатель «Статистика», что и замеры серверов, не больше 20 отчётов за запуск и не шлёт
+//! Работает только с согласия пользователя (вопрос при первом запуске и переключатель «Статистика» в профиле), не больше 20 отчётов за запуск и не шлёт
 //! одно и то же сообщение дважды.
 
 use std::collections::HashSet;
@@ -40,7 +40,7 @@ fn platform() -> &'static str {
 pub fn report(kind: &str, message: impl Into<String>) {
     let message: String = message.into();
     let message = message.trim();
-    if message.is_empty() || !zexor_vpn_core::settings::load().telemetry_enabled {
+    if message.is_empty() || !zexor_vpn_core::settings::load().telemetry_allowed() {
         return;
     }
     let message: String = message.chars().take(MAX_MESSAGE_CHARS).collect();

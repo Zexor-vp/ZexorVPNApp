@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import TelemetryConsent from './components/TelemetryConsent';
 import { I18nProvider } from './i18n';
 import './styles/globals.css';
 import { invoke } from '@tauri-apps/api/core';
@@ -23,6 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <I18nProvider>
       <App />
+      <TelemetryConsent />
     </I18nProvider>
   </React.StrictMode>,
 );

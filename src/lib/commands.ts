@@ -230,6 +230,8 @@ export interface AppSettings {
   elevated: boolean;
   /** Отправка анонимных замеров доступности серверов Zexor. */
   telemetry: boolean;
+  /** Пользователь уже ответил на вопрос о согласии на отправку анонимной статистики. */
+  telemetry_decided: boolean;
 }
 
 export const appSettings = (): Promise<AppSettings> => invoke('app_settings');

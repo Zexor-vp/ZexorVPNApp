@@ -19,8 +19,10 @@ pub struct SettingsView {
     pub routing_apps: Vec<String>,
     /// Приложение запущено с правами администратора (нужны для режима TUN).
     pub elevated: bool,
-    /// Отправка анонимных замеров доступности серверов Zexor.
+    /// Отправка анонимных замеров и отчётов об ошибках разрешена пользователем.
     pub telemetry: bool,
+    /// Пользователь уже ответил на вопрос о согласии.
+    pub telemetry_decided: bool,
 }
 
 fn view(settings: &AppSettings) -> SettingsView {
@@ -30,7 +32,8 @@ fn view(settings: &AppSettings) -> SettingsView {
         routing_mode: settings.routing.mode,
         routing_apps: settings.routing.apps.clone(),
         elevated: zexor_vpn_core::elevation::is_elevated(),
-        telemetry: settings.telemetry_enabled,
+        telemetry: settings.telemetry_allowed(),
+        telemetry_decided: settings.telemetry_decided,
     }
 }
 
@@ -126,6 +129,7 @@ pub fn set_telemetry(
 ) -> Result<SettingsView, CommandError> {
     update(&state, |s| {
         s.telemetry_enabled = enabled;
+        s.telemetry_decided = true;
         Ok(())
     })
 }

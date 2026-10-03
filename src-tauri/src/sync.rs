@@ -105,7 +105,7 @@ pub fn report_pings(app: &AppHandle, results: Vec<(String, Option<u32>)>) {
         let Some(state) = app.try_state::<AppState>() else {
             return;
         };
-        if !state.settings.lock().unwrap().telemetry_enabled {
+        if !state.settings.lock().unwrap().telemetry_allowed() {
             return;
         }
         {

@@ -38,6 +38,9 @@ pub struct AppSettings {
     pub routing: RoutingSettings,
     /// Отправлять на сервер анонимные замеры доступности серверов Zexor из сети пользователя.
     pub telemetry_enabled: bool,
+    /// Пользователь уже ответил на вопрос о согласии. Пока не ответил, ничего не отправляется — даже если
+    /// `telemetry_enabled` включён (так было по умолчанию в прежних версиях, согласия тогда не спрашивали).
+    pub telemetry_decided: bool,
     /// Последняя «эпоха» команды «обновить подписку» от админа, которую приложение уже обработало.
     pub last_sync_epoch: Option<i64>,
 }
@@ -48,9 +51,17 @@ impl Default for AppSettings {
             tunnel_mode: TunnelMode::Proxy,
             auto: false,
             routing: RoutingSettings::default(),
-            telemetry_enabled: true,
+            telemetry_enabled: false,
+            telemetry_decided: false,
             last_sync_epoch: None,
         }
+    }
+}
+
+impl AppSettings {
+    /// Можно ли отправлять анонимные замеры и отчёты об ошибках: пользователь согласился.
+    pub fn telemetry_allowed(&self) -> bool {
+        self.telemetry_enabled && self.telemetry_decided
     }
 }
 
