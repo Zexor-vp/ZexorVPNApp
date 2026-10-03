@@ -51,6 +51,19 @@ jobs:
       - name: Каркас Android-проекта
         run: npx tauri android init --ci 2>&1 | tee android-init.log
 
+      # Иконка приложения: `tauri android init` подставляет стандартный значок Tauri — перекрываем его нашим набором
+      # из src-tauri/icons/android и стираем всё, что осталось от шаблона (иначе остаются чужие векторные слои).
+      - name: Иконка приложения
+        run: |
+          RES=src-tauri/gen/android/app/src/main/res
+          {
+            echo "== до замены"; find "$RES" -iname "ic_launcher*" | sort
+            rm -rf "$RES"/mipmap-*/ic_launcher* "$RES"/drawable*/ic_launcher* "$RES"/values/ic_launcher_background.xml
+            cp -r src-tauri/icons/android/. "$RES"/
+            echo "== после замены"; find "$RES" -iname "ic_launcher*" | sort
+            sha256sum "$RES/mipmap-xxxhdpi/ic_launcher.png" src-tauri/icons/android/mipmap-xxxhdpi/ic_launcher.png
+          } 2>&1 | tee android-icon.log
+
       # xray для Android кладём в Android-модуль плагина: .so-файл в jniLibs распаковывается на диск, и
       # приложение запускает его как обычный исполняемый файл; базы geoip/geosite — в ресурсы APK.
       - name: xray-core для Android
@@ -117,6 +130,10 @@ jobs:
           {
             echo "== файлы"; unzip -l "${APK_PATH}" | grep -E "libxray|geo/|classes|AndroidManifest|libzexor" | head -20
             echo "== иконка"; "${BT}/aapt2" dump badging "${APK_PATH}" 2>&1 | grep -E "application-icon|application-label:" | head -5
+            ICON="$("${BT}/aapt2" dump badging "${APK_PATH}" 2>&1 | grep -oE "application-icon-[0-9]+:'[^']+'" | tail -1 | sed -E "s/.*:'(.*)'/\\1/")"
+            echo "иконка в APK: ${ICON}"
+            unzip -p "${APK_PATH}" "${ICON}" 2>/dev/null | sha256sum
+            for f in src-tauri/icons/android/mipmap-*/ic_launcher.png; do echo "наш ${f}: $(sha256sum < "$f")"; done
             echo "== манифест"; "${BT}/aapt2" dump permissions "${APK_PATH}" 2>&1 | head -15
             echo "== сервис"; "${BT}/aapt2" dump xmltree --file AndroidManifest.xml "${APK_PATH}" 2>&1 | grep -iE "vpn|service|extractNativeLibs|minSdk|targetSdk" | head -15
           } 2>&1 | tee android-apk.log
@@ -138,7 +155,7 @@ jobs:
         if: always()
         run: |
           mkdir -p /tmp/ci-logs
-          for f in android-sdk.log android-init.log android-build.log android-sign.log android-apk.log; do
+          for f in android-sdk.log android-init.log android-build.log android-sign.log android-apk.log android-icon.log; do
             [ -f "$f" ] && tail -n 1200 "$f" > "/tmp/ci-logs/$f" || true
           done
           echo "commit ${GITHUB_SHA}" > /tmp/ci-logs/README.txt
