@@ -12,12 +12,18 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
+import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import java.io.File
 import java.util.concurrent.TimeUnit
+
+@InvokeArg
+class ToastArgs {
+    var text: String = ""
+}
 
 @TauriPlugin
 class VpnPlugin(private val activity: Activity) : Plugin(activity) {
@@ -87,7 +93,11 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
     /** Короткое системное сообщение: ошибка быстрого включения, когда окна приложения нет на экране. */
     @Command
     fun toast(invoke: Invoke) {
-        val text = invoke.getString("text") ?: ""
+        val text = try {
+            invoke.parseArgs(ToastArgs::class.java).text
+        } catch (_: Exception) {
+            ""
+        }
         QuickSurfaces.done = true
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             android.widget.Toast.makeText(activity.applicationContext, text, android.widget.Toast.LENGTH_LONG).show()
