@@ -265,3 +265,11 @@ export interface NativeLabels {
 }
 
 export const setNativeLabels = (labels: NativeLabels): Promise<void> => invoke('set_native_labels', { labels });
+
+export interface ApkUpdate {
+  version: string;
+  url: string;
+}
+
+/** Android: последний релиз с APK, если он новее установленной версии. */
+export const checkApkUpdate = (): Promise<ApkUpdate | null> => invoke('check_apk_update');

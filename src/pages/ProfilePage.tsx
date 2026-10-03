@@ -15,7 +15,7 @@ import {
   requestEmailChange,
   verifyEmailChange,
 } from '../lib/cabinet';
-import { appSettings, errorMessage, logout, setTelemetry } from '../lib/commands';
+import { appSettings, checkApkUpdate, errorMessage, logout, openExternal, setTelemetry } from '../lib/commands';
 import { useT } from '../i18n';
 
 type UpdateState =
@@ -23,6 +23,7 @@ type UpdateState =
   | { kind: 'checking' }
   | { kind: 'up-to-date' }
   | { kind: 'available'; update: Update }
+  | { kind: 'apk'; version: string; url: string }
   | { kind: 'installing' }
   | { kind: 'error'; message: string };
 
@@ -66,6 +67,11 @@ export default function ProfilePage({ onLoggedOut }: Props) {
   async function handleCheckUpdate() {
     setUpdateState({ kind: 'checking' });
     try {
+      if (isMobile) {
+        const apk = await checkApkUpdate();
+        setUpdateState(apk ? { kind: 'apk', ...apk } : { kind: 'up-to-date' });
+        return;
+      }
       const update = await checkForUpdate();
       setUpdateState(update ? { kind: 'available', update } : { kind: 'up-to-date' });
     } catch (err) {
@@ -168,8 +174,6 @@ export default function ProfilePage({ onLoggedOut }: Props) {
 
       <section className="card">
         <span className="label">{t('Приложение')}</span>
-        {!isMobile && (
-          <>
         <div className="row">
           <span>
             {t('Обновления')}
@@ -184,14 +188,20 @@ export default function ProfilePage({ onLoggedOut }: Props) {
           </Button>
         </div>
         {updateState.kind === 'up-to-date' && <p className="muted">{t('Установлена последняя версия.')}</p>}
+        {updateState.kind === 'apk' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <p style={{ margin: 0 }}>{t('Доступна версия {version}.', { version: updateState.version })}</p>
+            <Button onClick={() => void openExternal(updateState.url).catch((err) => setUpdateState({ kind: 'error', message: errorMessage(err) }))}>
+              {t('Скачать обновление')}
+            </Button>
+          </div>
+        )}
         {updateState.kind === 'error' && <p className="form-error">{updateState.message}</p>}
         {updateState.kind === 'available' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             <p style={{ margin: 0 }}>{t('Доступна версия {version}.', { version: updateState.update.version })}</p>
             <Button onClick={() => void handleInstallUpdate(updateState.update)}>{t('Установить и перезапустить')}</Button>
           </div>
-        )}
-          </>
         )}
         <Toggle
           label={t('Статистика доступности серверов')}
@@ -262,15 +272,15 @@ function EmailCard({
   return (
     <section className="card">
       <div className="row">
-        <div>
+        <div style={{ minWidth: 0 }}>
           <span className="label">{t('Почта')}</span>
-          <div className="tile-value" style={{ marginTop: '0.3rem', fontSize: '1rem' }}>
+          <div className="tile-value" style={{ marginTop: '0.3rem', fontSize: '1rem', overflowWrap: 'anywhere' }}>
             {email ?? t('не указана')}
           </div>
           {email && !verified && <span className="chip chip-warn">{t('не подтверждена')}</span>}
         </div>
         {step === 'view' && (
-          <Button variant="secondary" onClick={() => setStep('enter')}>
+          <Button variant="secondary" style={{ flexShrink: 0 }} onClick={() => setStep('enter')}>
             {email ? t('Изменить') : t('Добавить')}
           </Button>
         )}

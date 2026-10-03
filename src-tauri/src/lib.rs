@@ -3,6 +3,7 @@
 //! `zexor-vpn-core`.
 
 pub mod adblock;
+pub mod apk_update;
 pub mod auth;
 pub mod cabinet;
 pub mod settings;
@@ -138,6 +139,7 @@ pub fn run() {
             settings::list_running_apps,
             settings::set_telemetry,
             settings::set_native_labels,
+            apk_update::check_apk_update,
             cabinet::cabinet_request,
             cabinet::open_external,
             cabinet::open_payment_url,

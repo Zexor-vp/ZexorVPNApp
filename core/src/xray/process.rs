@@ -19,8 +19,8 @@ pub enum XrayError {
     ConfigWrite(String),
     #[error("не удалось запустить xray: {0}")]
     Spawn(String),
-    #[error("xray завершился сразу после старта (код {0:?}); проверьте конфиг")]
-    ExitedImmediately(Option<i32>),
+    #[error("xray завершился сразу после старта (код {0:?}); проверьте конфиг{1}")]
+    ExitedImmediately(Option<i32>, String),
 }
 
 /// Дескриптор запущенного xray. Пока структура жива — процесс работает;
@@ -139,7 +139,10 @@ impl XrayProcess {
         // показываем пользователю «подключено», когда туннеля нет.
         std::thread::sleep(std::time::Duration::from_millis(400));
         if let Some(status) = process.try_exit_status() {
-            return Err(XrayError::ExitedImmediately(status));
+            return Err(XrayError::ExitedImmediately(
+                status,
+                log_tail(&process.config_path),
+            ));
         }
 
         Ok(process)
@@ -172,6 +175,28 @@ impl XrayProcess {
 impl Drop for XrayProcess {
     fn drop(&mut self) {
         self.stop();
+    }
+}
+
+/// Последние строки журнала xray: по ним видно, на чём он упал (в сообщение об ошибке для пользователя).
+fn log_tail(config_path: &Path) -> String {
+    let Ok(text) = std::fs::read_to_string(config_path.with_file_name("xray.log")) else {
+        return String::new();
+    };
+    let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
+    let tail = lines[lines.len().saturating_sub(3)..].join(" | ");
+    let tail: String = tail
+        .chars()
+        .rev()
+        .take(500)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+    if tail.is_empty() {
+        String::new()
+    } else {
+        format!("\n{tail}")
     }
 }
 
@@ -313,7 +338,7 @@ mod tests {
         ));
 
         match err {
-            XrayError::ExitedImmediately(code) => assert_eq!(code, Some(23)),
+            XrayError::ExitedImmediately(code, _) => assert_eq!(code, Some(23)),
             other => panic!("ожидался ExitedImmediately, получено {other:?}"),
         }
     }
