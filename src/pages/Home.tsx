@@ -126,6 +126,17 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
   const protocol = useAsync(() => (guest ? Promise.resolve(null) : getProtocol()), [guest]);
   const devices = useAsync(() => (guest ? Promise.resolve(null) : getDevices()), [guest]);
 
+  // Порядок серверов случайный: при каждом заходе на главную список перемешивается заново (как в Happ), а пока
+  // страница открыта, он не прыгает при фоновых обновлениях — у каждого сервера свой случайный ключ на всё посещение.
+  const shuffleKeys = useRef(new Map<string, number>());
+  const shuffled = useCallback(<T extends { remark: string }>(list: T[]): T[] => {
+    const keys = shuffleKeys.current;
+    for (const item of list) {
+      if (!keys.has(item.remark)) keys.set(item.remark, Math.random());
+    }
+    return [...list].sort((a, b) => (keys.get(a.remark) ?? 0) - (keys.get(b.remark) ?? 0));
+  }, []);
+
   const loadNodes = useCallback(async (id: string) => {
     const mine = ++loadSeq.current;
     setNodesError(null);
@@ -135,7 +146,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
       return;
     }
     try {
-      const list = await listNodes(id);
+      const list = shuffled(await listNodes(id));
       if (mine !== loadSeq.current) return;
       setNodes(list);
       const saved = readSelection(id);
@@ -151,7 +162,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
       setSelectedNode('');
       setNodesError(errorMessage(err));
     }
-  }, []);
+  }, [shuffled]);
 
   const refreshPings = useCallback(async () => {
     if (!sourceId) return;

@@ -6252,7 +6252,7 @@ dependencies = [
 
 [[package]]
 name = "zexor-vpn-core"
-version = "0.3.25"
+version = "0.3.26"
 dependencies = [
  "base64 0.22.1",
  "getrandom 0.2.17",
@@ -6273,7 +6273,7 @@ dependencies = [
 
 [[package]]
 name = "zexor-vpn-desktop"
-version = "0.3.25"
+version = "0.3.26"
 dependencies = [
  "base64 0.22.1",
  "getrandom 0.2.17",
