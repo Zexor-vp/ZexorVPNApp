@@ -74,7 +74,8 @@ impl Default for NativeLabels {
     }
 }
 
-/// Пункты меню трея — чтобы переименовать их при смене языка.
+/// Пункты меню трея — чтобы переименовать их при смене языка (трей есть только на компьютерах).
+#[cfg(desktop)]
 pub struct TrayItems {
     pub open: tauri::menu::MenuItem<tauri::Wry>,
     pub disconnect: tauri::menu::MenuItem<tauri::Wry>,
@@ -89,6 +90,7 @@ pub struct AppState {
     pub block_stats: Mutex<BlockStats>,
     pub settings: Mutex<AppSettings>,
     pub labels: Mutex<NativeLabels>,
+    #[cfg(desktop)]
     pub tray_items: Mutex<Option<TrayItems>>,
 }
 
@@ -102,6 +104,7 @@ impl Default for AppState {
             block_stats: Mutex::new(BlockStats::default()),
             settings: Mutex::new(zexor_vpn_core::settings::load()),
             labels: Mutex::new(NativeLabels::default()),
+            #[cfg(desktop)]
             tray_items: Mutex::new(None),
         }
     }

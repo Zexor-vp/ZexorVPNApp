@@ -148,6 +148,7 @@ pub fn set_native_labels(state: State<'_, AppState>, labels: NativeLabelsInput) 
         current.tray_disconnect = labels.tray_disconnect.clone();
         current.tray_quit = labels.tray_quit.clone();
     }
+    #[cfg(desktop)]
     if let Some(items) = state.tray_items.lock().unwrap().as_ref() {
         let _ = items.open.set_text(&labels.tray_open);
         let _ = items.disconnect.set_text(&labels.tray_disconnect);

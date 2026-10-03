@@ -2,7 +2,7 @@
 /target/
 **/target/
 
-# Схемы, которые Tauri сам пересобирает при cargo check/build
+# Схемы и Android-проект Tauri пересобирает сам (Android — командой `tauri android init` в CI)
 src-tauri/gen/
 
 # Node / фронтенд

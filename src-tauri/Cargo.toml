@@ -16,12 +16,9 @@ tauri-build = { version = "2", features = [] }
 zexor-vpn-core = { path = "../core" }
 
 tauri = { version = "2", features = ["tray-icon"] }
-tauri-plugin-updater = "2"
 tauri-plugin-dialog = "2"
 # Перезапуск приложения после установки обновления кнопкой "Проверить обновления".
 tauri-plugin-process = "2"
-# Второй запуск не плодит ещё одну копию (и второй xray на тех же портах), а показывает окно запущенной.
-tauri-plugin-single-instance = "2"
 # Системные уведомления Windows: ответ поддержки приходит, даже когда окно спрятано в трей.
 tauri-plugin-notification = "2"
 
@@ -31,13 +28,25 @@ thiserror = "2"
 # Только для запроса содержимого подписки (sub.zexorvpn.site) — сам API-клиент
 # кабинета живёт в zexor-vpn-core.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
-# Хранилище refresh-токена: Windows Credential Manager.
-keyring = { version = "3", features = ["windows-native"] }
 # Криптостойкий state для входа через браузер.
 getrandom = "0.2"
 tokio = { version = "1", features = ["time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Только для компьютеров: на телефоне нет ни автообновления самим приложением, ни «второго запуска».
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+# Второй запуск не плодит ещё одну копию (и второй xray на тех же портах), а показывает окно запущенной.
+tauri-plugin-single-instance = "2"
+
+# Хранилище refresh-токена: Windows Credential Manager.
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+# На Android ссылки (вход через браузер, оплата) открывает системный обработчик.
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-opener = "2"
 
 [dev-dependencies]
 pretty_assertions = "1"

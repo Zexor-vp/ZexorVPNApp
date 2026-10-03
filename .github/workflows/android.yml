@@ -1,0 +1,62 @@
+name: android
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+env:
+  # Версия ядра, которое кладётся в APK (сборка для Android: Xray-android-arm64-v8a.zip).
+  XRAY_VERSION: v26.9.9
+  NDK_VERSION: 27.2.12479018
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Android SDK и NDK
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" >/dev/null
+          echo "NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Установка зависимостей фронтенда
+        run: npm ci
+
+      - name: Каркас Android-проекта
+        run: npx tauri android init --ci
+
+      - name: Сборка APK
+        run: npx tauri android build --apk --debug --target aarch64
+
+      - name: Найденные APK
+        run: find src-tauri/gen/android -name '*.apk' -print
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zexor-vpn-android
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error

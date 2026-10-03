@@ -32,16 +32,40 @@ pub enum AuthError {
 /// без участия командной строки, поэтому `&` в query-строке ничего не ломает
 /// (в отличие от `cmd /C start`).
 pub fn open_in_browser(url: &str) -> Result<(), AuthError> {
-    #[cfg(windows)]
-    let spawned = std::process::Command::new("rundll32")
-        .args(["url.dll,FileProtocolHandler", url])
-        .spawn();
-    #[cfg(not(windows))]
-    let spawned = std::process::Command::new("xdg-open").arg(url).spawn();
+    #[cfg(target_os = "android")]
+    {
+        use tauri_plugin_opener::OpenerExt;
+        let app = ANDROID_APP
+            .get()
+            .ok_or_else(|| AuthError::Browser("приложение ещё не готово".to_string()))?;
+        return app
+            .opener()
+            .open_url(url, None::<&str>)
+            .map_err(|e| AuthError::Browser(e.to_string()));
+    }
 
-    spawned
-        .map(|_| ())
-        .map_err(|e| AuthError::Browser(e.to_string()))
+    #[cfg(not(target_os = "android"))]
+    {
+        #[cfg(windows)]
+        let spawned = std::process::Command::new("rundll32")
+            .args(["url.dll,FileProtocolHandler", url])
+            .spawn();
+        #[cfg(not(windows))]
+        let spawned = std::process::Command::new("xdg-open").arg(url).spawn();
+
+        spawned
+            .map(|_| ())
+            .map_err(|e| AuthError::Browser(e.to_string()))
+    }
+}
+
+/// Дескриптор приложения для открытия ссылок на Android (там это делает плагин, а не внешняя команда).
+#[cfg(target_os = "android")]
+static ANDROID_APP: std::sync::OnceLock<tauri::AppHandle> = std::sync::OnceLock::new();
+
+#[cfg(target_os = "android")]
+pub fn set_android_app(handle: tauri::AppHandle) {
+    let _ = ANDROID_APP.set(handle);
 }
 
 /// 32 случайных байта в hex (64 символа) — `state` браузерного входа. Сервер
@@ -60,27 +84,68 @@ fn now_unix() -> i64 {
         .unwrap_or(0)
 }
 
+// Refresh-токен: в Windows — Credential Manager, на остальных платформах (Android) — файл в закрытой
+// папке приложения (она недоступна другим приложениям).
+#[cfg(windows)]
 fn credential_entry() -> Result<keyring::Entry, AuthError> {
     keyring::Entry::new(CREDENTIAL_SERVICE, CREDENTIAL_USER)
         .map_err(|e| AuthError::Credential(e.to_string()))
 }
 
+#[cfg(not(windows))]
+fn token_file() -> std::path::PathBuf {
+    zexor_vpn_core::xray::process::app_data_dir()
+        .join("ZexorVPN")
+        .join("refresh_token")
+}
+
 /// Сохраняет refresh-токен в системном хранилище. Вызывается после каждого
 /// успешного логина/обновления — сервер отзывает предыдущий refresh сразу.
+#[cfg(windows)]
 pub fn persist_refresh_token(refresh_token: &str) -> Result<(), AuthError> {
     credential_entry()?
         .set_password(refresh_token)
         .map_err(|e| AuthError::Credential(e.to_string()))
 }
 
+#[cfg(not(windows))]
+pub fn persist_refresh_token(refresh_token: &str) -> Result<(), AuthError> {
+    let path = token_file();
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| AuthError::Credential(e.to_string()))?;
+    }
+    std::fs::write(&path, refresh_token).map_err(|e| AuthError::Credential(e.to_string()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
 fn load_refresh_token() -> Option<String> {
     credential_entry().ok()?.get_password().ok()
 }
 
+#[cfg(not(windows))]
+fn load_refresh_token() -> Option<String> {
+    std::fs::read_to_string(token_file())
+        .ok()
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+}
+
+#[cfg(windows)]
 pub fn clear_stored_session() {
     if let Ok(entry) = credential_entry() {
         let _ = entry.delete_credential();
     }
+}
+
+#[cfg(not(windows))]
+pub fn clear_stored_session() {
+    let _ = std::fs::remove_file(token_file());
 }
 
 /// Возвращает годный к использованию access-токен, обновляя его по необходимости.

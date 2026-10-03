@@ -214,9 +214,13 @@ async fn poll_support(app: &AppHandle, known: &mut HashMap<i64, i64>, first: &mu
     // Самый первый опрос только запоминает, что уже есть, — иначе пришла бы пачка старых уведомлений.
     if !*first && !new_reply_titles.is_empty() {
         // Если окно приложения сейчас на виду, ответ видно и так — системное уведомление не нужно.
+        #[cfg(desktop)]
         let focused = app
             .get_webview_window("main")
             .is_some_and(|w| w.is_focused().unwrap_or(false) && w.is_visible().unwrap_or(false));
+        // На телефоне уведомление показывается всегда: система сама не покажет его на переднем плане.
+        #[cfg(not(desktop))]
+        let focused = false;
         if !focused {
             let title = state.labels.lock().unwrap().support_reply.clone();
             for body in new_reply_titles {

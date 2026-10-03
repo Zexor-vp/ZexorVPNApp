@@ -10,11 +10,14 @@ pub mod state;
 pub mod sync;
 pub mod xray;
 
+#[cfg(desktop)]
 use tauri::menu::{Menu, MenuItem};
+#[cfg(desktop)]
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager as _};
 
 /// Показывает главное окно (из трея или при повторном запуске приложения).
+#[cfg(desktop)]
 fn show_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -26,6 +29,7 @@ fn show_main_window(app: &AppHandle) {
 /// Настоящий выход: гасим туннель, возвращаем системный прокси и закрываемся.
 /// Закрытие окна крестиком сюда НЕ ведёт — оно только прячет окно в трей, чтобы
 /// VPN продолжал работать.
+#[cfg(desktop)]
 fn quit_app(app: &AppHandle) {
     if let Some(state) = app.try_state::<state::AppState>() {
         state.shutdown_blocking();
@@ -33,6 +37,7 @@ fn quit_app(app: &AppHandle) {
     app.exit(0);
 }
 
+#[cfg(desktop)]
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Открыть Zexor VPN", true, None::<&str>)?;
     let disconnect = MenuItem::with_id(app, "disconnect", "Отключить VPN", true, None::<&str>)?;
@@ -87,16 +92,22 @@ pub fn run() {
         )
         .init();
 
-    tauri::Builder::default()
-        // Должен идти первым: второй процесс сообщает первому и сразу завершается.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            show_main_window(app);
-        }))
+    let builder = tauri::Builder::default();
+
+    // Только на компьютерах. Должен идти первым: второй процесс сообщает первому и сразу завершается.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        show_main_window(app);
+    }));
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(tauri_plugin_opener::init());
+
+    builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .manage(state::AppState::default())
         .invoke_handler(tauri::generate_handler![
             auth::commands::login,
             auth::commands::logout,
@@ -138,10 +149,23 @@ pub fn run() {
             adblock::commands::reset_adblock_session_stats,
         ])
         .setup(|app| {
+            // Не-Windows (Android): корень данных приложения — закрытая папка приложения, а не %LOCALAPPDATA%.
+            // Состояние создаём уже после этого, чтобы настройки читались из правильного места.
+            #[cfg(not(windows))]
+            {
+                if let Ok(dir) = app.path().app_local_data_dir() {
+                    std::env::set_var("LOCALAPPDATA", dir);
+                }
+            }
+            #[cfg(target_os = "android")]
+            auth::set_android_app(app.handle().clone());
+            app.manage(state::AppState::default());
+
             // Жёсткая гарантия: при любом выходе снимаем системный прокси и
             // гасим xray, иначе пользователь останется без интернета.
             let handle = app.handle().clone();
             app.manage(state::ShutdownGuard::new(handle));
+            #[cfg(desktop)]
             setup_tray(app)?;
             xray::export_geo_assets_dir(app.handle());
             sync::spawn(app.handle().clone());
@@ -159,10 +183,13 @@ pub fn run() {
         .on_window_event(|window, event| {
             // Крестик не закрывает приложение: окно прячется в трей, а VPN
             // продолжает работать. Выйти по-настоящему можно из меню трея.
+            #[cfg(desktop)]
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
             }
+            #[cfg(not(desktop))]
+            let _ = (window, event);
         })
         .run(tauri::generate_context!())
         .expect("не удалось запустить приложение");
