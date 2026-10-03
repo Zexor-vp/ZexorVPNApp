@@ -6,6 +6,7 @@ import Button from '../components/Button';
 import LanguageCard from '../components/LanguageCard';
 import PageShell from '../components/PageShell';
 import Toggle from '../components/Toggle';
+import { isMobile } from '../lib/platform';
 import { reportAuthLoss, useAsync } from '../hooks/useAsync';
 import {
   formatMoney,
@@ -167,6 +168,8 @@ export default function ProfilePage({ onLoggedOut }: Props) {
 
       <section className="card">
         <span className="label">{t('Приложение')}</span>
+        {!isMobile && (
+          <>
         <div className="row">
           <span>
             {t('Обновления')}
@@ -188,6 +191,8 @@ export default function ProfilePage({ onLoggedOut }: Props) {
             <Button onClick={() => void handleInstallUpdate(updateState.update)}>{t('Установить и перезапустить')}</Button>
           </div>
         )}
+          </>
+        )}
         <Toggle
           label={t('Статистика доступности серверов')}
           hint={t('Раз в полчаса приложение отправляет время отклика серверов Zexor и название вашей сети (оператора) — без IP-адреса и без привязки к аккаунту. Это помогает быстрее находить блокировки.')}
@@ -198,9 +203,11 @@ export default function ProfilePage({ onLoggedOut }: Props) {
             void setTelemetry(enabled).catch(() => setTelemetryState(!enabled));
           }}
         />
+        {!isMobile && (
         <p className="muted" style={{ margin: 0 }}>
           {t('Закрытие окна не отключает VPN — приложение остаётся в трее. Выйти полностью можно из меню значка в трее.')}
         </p>
+        )}
       </section>
 
       <section className="card">

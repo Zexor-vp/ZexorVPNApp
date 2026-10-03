@@ -77,23 +77,67 @@ jobs:
           PY
 
       - name: Сборка APK
-        run: npx tauri android build --apk --debug --target aarch64 2>&1 | tee android-build.log
+        run: npx tauri android build --apk --target aarch64 2>&1 | tee android-build.log
 
-      - name: Найденные APK
-        run: find src-tauri/gen/android -name '*.apk' -print
+      # Подпись: если в секретах репозитория есть постоянный ключ (ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD,
+      # ANDROID_KEY_ALIAS) — подписываем им, и обновления встают поверх прежней версии. Иначе ключ создаётся
+      # на лету: APK ставится, но каждую новую версию придётся ставить, удалив предыдущую.
+      - name: Подпись APK
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -e
+          BT="${ANDROID_HOME}/build-tools/35.0.0"
+          UNSIGNED="$(find src-tauri/gen/android/app/build/outputs/apk -name '*unsigned*.apk' | head -n 1)"
+          echo "unsigned: ${UNSIGNED}"
+          if [ -n "${KS_B64}" ]; then
+            echo "${KS_B64}" | base64 -d > /tmp/zexor.jks
+            PASS="${KS_PASS}"; ALIAS="${KS_ALIAS:-zexor}"
+            echo "ключ: из секретов" | tee android-sign.log
+          else
+            PASS="zexor-ephemeral"; ALIAS="zexor"
+            keytool -genkeypair -keystore /tmp/zexor.jks -alias "${ALIAS}" -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "${PASS}" -keypass "${PASS}" -dname "CN=Zexor VPN" >/dev/null 2>&1
+            echo "ключ: временный (постоянного в секретах нет)" | tee android-sign.log
+          fi
+          VERSION="$(node -p "require('./package.json').version")"
+          OUT="Zexor-VPN-${VERSION}-android-arm64.apk"
+          "${BT}/zipalign" -p -f 4 "${UNSIGNED}" /tmp/aligned.apk
+          "${BT}/apksigner" sign --ks /tmp/zexor.jks --ks-pass "pass:${PASS}" --key-pass "pass:${PASS}" --ks-key-alias "${ALIAS}" --out "${OUT}" /tmp/aligned.apk
+          "${BT}/apksigner" verify --print-certs "${OUT}" 2>&1 | head -3 | tee -a android-sign.log
+          ls -la "${OUT}" | tee -a android-sign.log
+          echo "APK_PATH=${OUT}" >> "$GITHUB_ENV"
+
+      - name: Проверка содержимого APK
+        run: |
+          set +e
+          BT="${ANDROID_HOME}/build-tools/35.0.0"
+          {
+            echo "== файлы"; unzip -l "${APK_PATH}" | grep -E "libxray|geo/|classes|AndroidManifest|libzexor" | head -20
+            echo "== манифест"; "${BT}/aapt2" dump permissions "${APK_PATH}" 2>&1 | head -15
+            echo "== сервис"; "${BT}/aapt2" dump xmltree --file AndroidManifest.xml "${APK_PATH}" 2>&1 | grep -iE "vpn|service|extractNativeLibs|minSdk|targetSdk" | head -15
+          } 2>&1 | tee android-apk.log
 
       - uses: actions/upload-artifact@v4
         with:
           name: zexor-vpn-android
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: ${{ env.APK_PATH }}
           if-no-files-found: error
+
+      - name: Приложить APK к релизу
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APK_PATH }}
 
       # Журналы сборки читать из интерфейса GitHub без входа нельзя, поэтому хвост журнала кладём в ветку ci-logs.
       - name: Журнал сборки в ветку ci-logs
         if: always()
         run: |
           mkdir -p /tmp/ci-logs
-          for f in android-sdk.log android-init.log android-build.log; do
+          for f in android-sdk.log android-init.log android-build.log android-sign.log android-apk.log; do
             [ -f "$f" ] && tail -n 1200 "$f" > "/tmp/ci-logs/$f" || true
           done
           echo "commit ${GITHUB_SHA}" > /tmp/ci-logs/README.txt

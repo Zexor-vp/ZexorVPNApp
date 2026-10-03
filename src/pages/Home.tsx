@@ -7,6 +7,7 @@ import PageShell from '../components/PageShell';
 import ProgressBar from '../components/ProgressBar';
 import ProtocolMenu from '../components/ProtocolMenu';
 import ModeSlider from '../components/ModeSlider';
+import { isMobile } from '../lib/platform';
 import ServerPicker, { type PingValue } from '../components/ServerPicker';
 import { BoltIcon, PlusIcon, RefreshIcon, TrashIcon } from '../components/Icons';
 import { reportAuthLoss, useAsync } from '../hooks/useAsync';
@@ -463,7 +464,11 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
       ) : (
       <section className="card card-glow card-raised">
         <div className="row">
-          <ModeSlider value={tunnelMode} disabled={busy || !settings} onChange={(mode) => void handleModeChange(mode)} />
+          {isMobile ? (
+            <span />
+          ) : (
+            <ModeSlider value={tunnelMode} disabled={busy || !settings} onChange={(mode) => void handleModeChange(mode)} />
+          )}
           <div className="row" style={{ gap: '0.5rem' }}>
             {canSwitchProtocol && <ProtocolMenu value={activeProtocol} disabled={busy} onChange={handleProtocolChange} />}
             {!isAccount && (
@@ -580,6 +585,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
         </section>
       )}
 
+      {!isMobile && (
       <section className="card">
         <div className="row">
           <span className="label">{t('Маршрутизация')}</span>
@@ -596,6 +602,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
           {t('Настроить маршрутизацию')}
         </Button>
       </section>
+      )}
 
       {adminPrompt && (
         <Modal title={t('Нужны права администратора')} onClose={() => setAdminPrompt(false)}>
