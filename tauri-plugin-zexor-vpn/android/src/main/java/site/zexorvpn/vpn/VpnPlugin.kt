@@ -21,19 +21,27 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
     /** geoip.dat / geosite.dat лежат в ресурсах APK; xray читает их с диска, поэтому копируем в папку приложения. */
     override fun load(webView: WebView) {
         passInsetsToPage(webView)
-        try {
-            val dir = File(activity.filesDir, "geo").apply { mkdirs() }
-            for (name in listOf("geoip.dat", "geosite.dat")) {
-                val target = File(dir, name)
-                val size = activity.assets.openFd("geo/$name").use { it.length }
-                if (!target.exists() || target.length() != size) {
-                    activity.assets.open("geo/$name").use { input ->
-                        target.outputStream().use { input.copyTo(it) }
-                    }
-                }
-            }
+        val dir = File(activity.filesDir, "geo").apply { mkdirs() }
+        // Базы в APK сжаты, поэтому `openFd` для них падает; читаем обычным `open`. Перекопируем, если файла нет
+        // или он старше установленной версии приложения (после обновления базы могли смениться).
+        val installedAt = try {
+            activity.packageManager.getPackageInfo(activity.packageName, 0).lastUpdateTime
         } catch (_: Exception) {
-            // Без баз geosite/geoip часть правил не заработает, но VPN поднимется.
+            0L
+        }
+        for (name in listOf("geoip.dat", "geosite.dat")) {
+            try {
+                val target = File(dir, name)
+                if (target.length() > 0 && target.lastModified() >= installedAt) continue
+                val temp = File(dir, "$name.tmp")
+                activity.assets.open("geo/$name").use { input ->
+                    temp.outputStream().use { input.copyTo(it) }
+                }
+                if (!temp.renameTo(target)) throw java.io.IOException("не удалось сохранить $name")
+            } catch (e: Exception) {
+                // Без баз geosite/geoip xray не запустится — оставляем след в logcat, а приложение расскажет об ошибке.
+                android.util.Log.e("ZexorVpn", "не удалось подготовить $name", e)
+            }
         }
     }
 
