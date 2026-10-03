@@ -931,6 +931,10 @@ h2 {
 /* Спиннер */
 
 .spinner {
+  /* span по умолчанию строчный: у такого элемента width/height и вращение не действуют, и вместо круга
+     получался неподвижный узкий овал (рамка слева и справа × высота строки). В кнопках-флексах это скрывалось. */
+  display: inline-block;
+  vertical-align: middle;
   flex: none;
   box-sizing: border-box;
   aspect-ratio: 1 / 1;
