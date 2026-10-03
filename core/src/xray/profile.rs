@@ -14,17 +14,50 @@ pub struct Profile {
     pub config: Value,
 }
 
+fn is_proxy_protocol(outbound: &Value) -> bool {
+    !matches!(
+        outbound.get("protocol").and_then(Value::as_str),
+        Some("freedom" | "blackhole" | "dns" | "loopback") | None
+    )
+}
+
 impl Profile {
-    /// Профиль с балансировщиками (панельный «AUTO»): не сервер, а набор серверов с выбором лучшего.
+    /// Профиль-балансировщик (панельный «AUTO»): не сервер, а набор серверов с выбором лучшего.
+    /// Признак — наблюдатель за серверами или балансировщик, под селектор которого попадает больше одного
+    /// сервера. У обычного сервера панель тоже кладёт балансировщики (`Main_Balancer`, `MSK_Balancer`),
+    /// но каждый смотрит ровно на один исходящий — это не «AUTO».
     pub fn is_balanced(&self) -> bool {
-        let has_balancers = self
+        if self.config.get("burstObservatory").is_some() || self.config.get("observatory").is_some()
+        {
+            return true;
+        }
+        let Some(balancers) = self
             .config
             .pointer("/routing/balancers")
             .and_then(Value::as_array)
-            .is_some_and(|b| !b.is_empty());
-        has_balancers
-            || self.config.get("burstObservatory").is_some()
-            || self.config.get("observatory").is_some()
+        else {
+            return false;
+        };
+        balancers.iter().any(|balancer| {
+            let selectors: Vec<&str> = balancer
+                .get("selector")
+                .and_then(Value::as_array)
+                .map(|list| list.iter().filter_map(Value::as_str).collect())
+                .unwrap_or_default();
+            let matched = self
+                .outbounds()
+                .iter()
+                .filter(|outbound| is_proxy_protocol(outbound))
+                .filter(|outbound| {
+                    let tag = outbound
+                        .get("tag")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default();
+                    selectors.iter().any(|selector| tag.starts_with(selector))
+                })
+                .count();
+            matched > 1
+        })
     }
 
     /// Сервер для YouTube без рекламы: по названию, так же узнаёт их и панель.
@@ -175,6 +208,55 @@ pub(crate) mod tests {
                         "rules": [{"domain": ["geosite:youtube"], "balancerTag": "YouTube_Balancer"}, {"network": "tcp,udp", "balancerTag": "Super_Balancer"}]},
             "burstObservatory": {"subjectSelector": ["proxy", "youtube"], "pingConfig": {"destination": "http://www.gstatic.com/generate_204", "interval": "1m", "timeout": "3s", "sampling": 1}}
         })
+    }
+
+    /// Серверный профиль панели: исходящие `main` и `msk`, у каждого свой балансировщик на один сервер.
+    fn panel_server_profile() -> Value {
+        let user = json!({"id": "00000000-1111-2222-3333-444444444444", "encryption": "none"});
+        json!({
+            "remarks": "🇨🇿 Чехия ",
+            "outbounds": [
+                {"tag": "main", "protocol": "vless", "settings": {"vnext": [{"address": "203.0.113.5", "port": 443, "users": [user]}]}},
+                {"tag": "msk", "protocol": "vless", "settings": {"vnext": [{"address": "203.0.113.6", "port": 443, "users": [user]}]}},
+                {"tag": "direct", "protocol": "freedom"}
+            ],
+            "routing": {
+                "balancers": [
+                    {"tag": "Main_Balancer", "selector": ["main"], "strategy": {"type": "random"}},
+                    {"tag": "MSK_Balancer", "selector": ["msk"], "strategy": {"type": "random"}}
+                ],
+                "rules": [{"domain": ["domain:zzluocup.site"], "balancerTag": "MSK_Balancer"}, {"network": "tcp,udp", "balancerTag": "Main_Balancer"}]
+            }
+        })
+    }
+
+    #[test]
+    fn panel_server_profile_with_single_server_balancers_is_a_server_not_auto() {
+        let server = Profile {
+            remark: "x".into(),
+            config: panel_server_profile(),
+        };
+        assert!(!server.is_balanced());
+        assert_eq!(server.endpoint(), Some(("203.0.113.5".to_string(), 443)));
+        assert!(Profile {
+            remark: "AUTO".into(),
+            config: auto_profile()
+        }
+        .is_balanced());
+    }
+
+    #[test]
+    fn balancer_over_several_servers_without_observatory_is_auto() {
+        let mut config = auto_profile();
+        config.as_object_mut().unwrap().remove("burstObservatory");
+        let second = config["outbounds"][0].clone();
+        config["outbounds"].as_array_mut().unwrap().push(second);
+        config["outbounds"][4]["tag"] = json!("proxy-2");
+        assert!(Profile {
+            remark: "AUTO".into(),
+            config
+        }
+        .is_balanced());
     }
 
     #[test]

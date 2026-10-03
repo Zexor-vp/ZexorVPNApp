@@ -1,7 +1,7 @@
 {
   "name": "zexor-vpn-desktop",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
     "@tauri-apps/plugin-notification": "2.4.0",
     "@tauri-apps/plugin-process": "^2",
     "@tauri-apps/plugin-updater": "^2",
+    "country-flag-icons": "1.6.20",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

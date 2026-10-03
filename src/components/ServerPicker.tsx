@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDownIcon, RefreshIcon } from './Icons';
 import { useOutsideClose } from '../hooks/useOutsideClose';
+import { ServerName } from './Flag';
 import type { NodeSummary } from '../lib/commands';
 
 /** `undefined` — ещё меряем, `null` — не отвечает, число — миллисекунды. */
@@ -62,7 +63,7 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
               'Нет серверов'
             ) : (
               <>
-                {current?.remark ?? '—'} {current && <PingBadge ms={pings[current.remark]} />}
+                {current ? <ServerName remark={current.remark} /> : '—'} {current && <PingBadge ms={pings[current.remark]} />}
               </>
             )}
           </span>
@@ -85,7 +86,9 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
               }}
             >
               <span className="dropdown-item-main">
-                <strong>{node.remark}</strong>
+                <strong>
+                  <ServerName remark={node.remark} />
+                </strong>
                 <span className="muted">{node.protocol === 'wireguard' ? 'WireGuard' : node.is_reality ? 'VLESS · REALITY' : 'VLESS'}</span>
               </span>
               <PingBadge ms={pings[node.remark]} />

@@ -1434,3 +1434,20 @@ h2 {
   color: var(--text);
   background: rgba(148, 163, 184, 0.15);
 }
+
+/* Название сервера с флагом */
+
+.server-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.server-flag {
+  width: 1.35rem;
+  height: auto;
+  border-radius: 3px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
