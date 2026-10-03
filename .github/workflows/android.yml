@@ -116,6 +116,7 @@ jobs:
           BT="${ANDROID_HOME}/build-tools/35.0.0"
           {
             echo "== файлы"; unzip -l "${APK_PATH}" | grep -E "libxray|geo/|classes|AndroidManifest|libzexor" | head -20
+            echo "== иконка"; "${BT}/aapt2" dump badging "${APK_PATH}" 2>&1 | grep -E "application-icon|application-label:" | head -5
             echo "== манифест"; "${BT}/aapt2" dump permissions "${APK_PATH}" 2>&1 | head -15
             echo "== сервис"; "${BT}/aapt2" dump xmltree --file AndroidManifest.xml "${APK_PATH}" 2>&1 | grep -iE "vpn|service|extractNativeLibs|minSdk|targetSdk" | head -15
           } 2>&1 | tee android-apk.log
