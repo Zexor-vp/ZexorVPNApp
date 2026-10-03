@@ -129,6 +129,9 @@ h2 {
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem 1.25rem 7rem;
+}
+
+.page-body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -1450,4 +1453,141 @@ h2 {
   border-radius: 3px;
   flex-shrink: 0;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* Полноэкранный режим на ПК: нижняя панель уходит в левую колонку, карточки того же размера встают рядом */
+
+@media (min-width: 900px) {
+  .bottom-nav {
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: none;
+    width: 96px;
+    max-width: none;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    padding: 1rem 0.5rem;
+    border-radius: 0;
+    border-width: 0 1px 0 0;
+    box-shadow: none;
+  }
+
+  .nav-item {
+    flex: 0 0 auto;
+    padding: 0.8rem 0.25rem;
+    font-size: 0.7rem;
+  }
+
+  .frame {
+    max-width: none;
+    margin: 0;
+    padding-left: 96px;
+  }
+
+  .topbar {
+    padding: 1.25rem 2rem 0.5rem;
+  }
+
+  .page {
+    padding: 0.5rem 2rem 2rem;
+  }
+
+  /* Карточки остаются шириной 440px, как в узком окне, и укладываются в колонки без пустот:
+     высота у карточек разная, поэтому сетка (grid) оставляла бы дыры, а колонки (multicol) — нет.
+     Колонки растягиваются на всю ширину контейнера, поэтому ширину контейнера задаём кратной 440px. */
+  .page-body {
+    display: block;
+    columns: 440px;
+    column-gap: 1rem;
+    width: 440px;
+  }
+
+  .page-body > * {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  .page-body > .hint-bar,
+  .page-body > .page-title {
+    column-span: all;
+  }
+
+  /* Кнопка «Назад» в шапке — заметная, а не текстовая ссылка */
+  .back-btn {
+    padding: 0.55rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .back-btn:hover {
+    background: var(--accent-strong);
+    color: #04121c;
+  }
+
+  /* Список серверов раскрыт целиком, а «Авто» — широкая кнопка над ним */
+  .picker-row {
+    flex-direction: column-reverse;
+  }
+
+  .auto-btn {
+    flex-direction: row;
+    justify-content: center;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* 2 колонки: 96 (панель) + 64 (поля) + 2×440 + 16 */
+@media (min-width: 1056px) {
+  .page-body {
+    width: 896px;
+  }
+}
+
+@media (min-width: 1512px) {
+  .page-body {
+    width: 1352px;
+  }
+}
+
+@media (min-width: 1968px) {
+  .page-body {
+    width: 1808px;
+  }
+}
+
+/* Раскрытый список серверов (полноэкранный режим) */
+
+.server-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.server-list > .row {
+  margin-bottom: 0.25rem;
+}
+
+.server-list .dropdown-item {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.server-list .dropdown-item-active {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.server-list-auto {
+  opacity: 0.55;
+}
+
+.server-list-auto .dropdown-item {
+  cursor: default;
 }

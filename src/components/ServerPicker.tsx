@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDownIcon, RefreshIcon } from './Icons';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useOutsideClose } from '../hooks/useOutsideClose';
 import { ServerName } from './Flag';
 import type { NodeSummary } from '../lib/commands';
@@ -33,6 +34,8 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
   useOutsideClose(ref, open, close);
 
   const current = nodes.find((n) => n.remark === selected);
+  // В полноэкранном режиме список серверов всегда раскрыт: места хватает, а выпадающий список только перекрывал бы карточки.
+  const expanded = useMediaQuery('(min-width: 900px)');
 
   // Авто включили при открытом списке — закрываем его.
   useEffect(() => {
@@ -42,6 +45,42 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
   function toggle() {
     if (!open) onRefreshPings(); // пинг обновляем при каждом раскрытии списка
     setOpen((v) => !v);
+  }
+
+  if (expanded) {
+    return (
+      <div className={`server-list ${auto ? 'server-list-auto' : ''}`} role="listbox" aria-label="Серверы">
+        <div className="row">
+          <span className="label">{auto ? 'Авто выбор сервера' : 'Сервер'}</span>
+          <button type="button" className="link-btn" disabled={pinging || auto} onClick={onRefreshPings}>
+            <RefreshIcon /> {pinging ? 'Измеряем…' : 'Обновить пинг'}
+          </button>
+        </div>
+        {nodes.length === 0 && <span className="muted">Нет серверов</span>}
+        {nodes.map((node) => {
+          const active = !auto && node.remark === selected;
+          return (
+            <button
+              key={node.remark}
+              type="button"
+              role="option"
+              aria-selected={active}
+              disabled={disabled || auto}
+              className={`dropdown-item ${active ? 'dropdown-item-active' : ''}`}
+              onClick={() => onSelect(node.remark)}
+            >
+              <span className="dropdown-item-main">
+                <strong>
+                  <ServerName remark={node.remark} />
+                </strong>
+                <span className="muted">{node.protocol === 'wireguard' ? 'WireGuard' : node.is_reality ? 'VLESS · REALITY' : 'VLESS'}</span>
+              </span>
+              <PingBadge ms={pings[node.remark]} />
+            </button>
+          );
+        })}
+      </div>
+    );
   }
 
   return (

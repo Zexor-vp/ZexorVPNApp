@@ -10,10 +10,13 @@ const nodes = () =>
   protocol === 'wireguard'
     ? [['🇩🇪 Germany', 'wireguard'], ['🇺🇸 United States', 'wireguard'], ['🇨🇿 Czech Republic', 'wireguard']]
     : [['🇨🇿 Чехия', 'vless'], ['🇸🇪 Швеция', 'vless'], ['🇳🇱 Нидерланды', 'vless'], ['🇷🇺 Москва', 'vless']];
+// Демо стартует как гость (без аккаунта); вход любыми данными открывает полное приложение. `?account` — сразу с аккаунтом.
+let loggedIn = location.search.includes('account');
 let connected: string | null = null;
 let connectedAuto = false;
 const settings = { auto: false, tunnel_mode: 'proxy', routing_mode: 'exclude', routing_apps: ['steam.exe'] as string[], elevated: false };
-const sourcesList: { id: string; name: string; removable: boolean }[] = [{ id: 'account', name: 'Zexor', removable: false }];
+const accountSource = { id: 'account', name: 'Zexor', removable: false };
+const ownSources: { id: string; name: string; removable: boolean }[] = [];
 let blockedCount = 128;
 // В демо у обращения №7 есть непрочитанный ответ поддержки: видно красный значок и точку на вкладке.
 try { if (!localStorage.getItem('zexor.support.seen')) localStorage.setItem('zexor.support.seen', JSON.stringify({ 7: 1 })); } catch { /* демо */ }
@@ -23,9 +26,12 @@ const adblockView = () => ({ ...adblock, active_count: adblock.enabled ? 34 + (a
 export async function invoke(cmd: string, args: any = {}): Promise<any> {
   await new Promise((r) => setTimeout(r, 120));
   switch (cmd) {
-    case 'current_session': return { email: 'user@example.com' };
-    case 'list_sources': return sourcesList;
-    case 'add_source': { const added = { id: 'x' + sourcesList.length, name: args.name || 'Другой сервис', removable: true }; sourcesList.push(added); return added; }
+    case 'current_session': return loggedIn ? { email: 'user@example.com' } : null;
+    case 'login': loggedIn = true; return { email: args.email || 'user@example.com' };
+    case 'logout': loggedIn = false; return null;
+    case 'list_sources': return loggedIn ? [accountSource, ...ownSources] : [accountSource, ...ownSources];
+    case 'add_source': { const added = { id: 'x' + (ownSources.length + 1), name: args.name || 'Другой сервис', removable: true }; ownSources.push(added); return added; }
+    case 'remove_source': { const i = ownSources.findIndex((x) => x.id === args.id); if (i >= 0) ownSources.splice(i, 1); return null; }
     case 'list_nodes': return { nodes: nodes().map(([remark, p]) => ({ remark, protocol: p, is_reality: p === 'vless' })) };
     case 'connection_status': return { connected: !!connected, node_remark: connected, source_id: connected ? 'account' : null, auto: connectedAuto };
     case 'connect': connected = args.nodeRemark; connectedAuto = false; return null;

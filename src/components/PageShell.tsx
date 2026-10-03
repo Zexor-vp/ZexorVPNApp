@@ -20,7 +20,9 @@ export default function PageShell({ actions, children }: Props) {
           {actions}
         </div>
       </header>
-      <main className="page">{children}</main>
+      <main className="page">
+        <div className="page-body">{children}</div>
+      </main>
     </div>
   );
 }

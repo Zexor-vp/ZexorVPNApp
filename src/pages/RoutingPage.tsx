@@ -98,7 +98,7 @@ export default function RoutingPage({ onBack }: Props) {
   return (
     <PageShell
       actions={
-        <button className="link-btn" onClick={onBack}>
+        <button className="link-btn back-btn" onClick={onBack}>
           ← Назад
         </button>
       }

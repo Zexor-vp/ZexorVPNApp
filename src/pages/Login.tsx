@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import Button from '../components/Button';
+import PageShell from '../components/PageShell';
 import {
   errorMessage,
   login,
@@ -7,8 +8,12 @@ import {
   pollTelegramLogin,
   startBrowserLogin,
   startTelegramLogin,
+  openExternal,
   type SessionInfo,
 } from '../lib/commands';
+import { CABINET_URL } from '../lib/cabinet';
+
+const BOT_URL = 'https://t.me/Zexorvpnbot';
 
 const POLL_INTERVAL_MS = 2000;
 const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
@@ -84,13 +89,13 @@ export default function Login({ onSuccess }: Props) {
   }
 
   return (
-    <main className="app-shell login-shell">
-      <div className="brand">
-        <span className="brand-dot" />
-        <h1>Zexor VPN</h1>
+    <PageShell>
+      <div className="page-title">
+        <h1>Вход</h1>
+        <p>Войдите или зарегистрируйтесь, чтобы получить доступ к VPN Zexor</p>
       </div>
 
-      <form className="card login-card" onSubmit={handleSubmit}>
+      <form className="card" onSubmit={handleSubmit}>
         {pending ? (
           <div className="login-waiting">
             <span className="spinner" aria-hidden />
@@ -151,7 +156,20 @@ export default function Login({ onSuccess }: Props) {
         </Button>
       </form>
 
-      <p className="login-hint">Аккаунт создаётся в Telegram-боте или в веб-кабинете.</p>
-    </main>
+      <section className="card">
+        <span className="label">Нет аккаунта?</span>
+        <p className="muted" style={{ margin: 0 }}>
+          Аккаунт создаётся за минуту — в Telegram-боте или на сайте. После регистрации вернитесь сюда и войдите.
+        </p>
+        <div className="login-social">
+          <Button type="button" variant="secondary" onClick={() => void openExternal(BOT_URL)}>
+            Зарегистрироваться в Telegram
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => void openExternal(CABINET_URL)}>
+            Зарегистрироваться на сайте
+          </Button>
+        </div>
+      </section>
+    </PageShell>
   );
 }

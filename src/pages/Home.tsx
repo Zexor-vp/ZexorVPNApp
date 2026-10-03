@@ -66,11 +66,14 @@ interface Props {
   refreshKey: number;
   onOpenSubscription: () => void;
   onOpenRouting: () => void;
+  /** Без аккаунта: только свои подписки (кнопка «+»), без доступа к сервису Zexor. */
+  guest?: boolean;
 }
 
-export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: Props) {
+export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, guest = false }: Props) {
   const [sources, setSources] = useState<SourceSummary[]>([]);
-  const [sourceId, setSourceId] = useState<string>(ACCOUNT_SOURCE);
+  // Гость начинает без подписки: подписка аккаунта ему недоступна, свою он добавляет сам.
+  const [sourceId, setSourceId] = useState<string>(guest ? '' : ACCOUNT_SOURCE);
   const [nodes, setNodes] = useState<NodeSummary[]>([]);
   const [nodesError, setNodesError] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState('');
@@ -98,15 +101,27 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
   });
   const loadSeq = useRef(0);
 
-  const isAccount = sourceId === ACCOUNT_SOURCE;
+  const isAccount = !guest && sourceId === ACCOUNT_SOURCE;
 
-  const subscription = useAsync(() => getSubscription(), []);
-  const protocol = useAsync(() => getProtocol(), []);
-  const devices = useAsync(() => getDevices(), []);
+  // Список подписок: гостю подписка аккаунта не показывается.
+  const visibleSources = useCallback(
+    (list: SourceSummary[]) => (guest ? list.filter((s) => s.id !== ACCOUNT_SOURCE) : list),
+    [guest],
+  );
+
+  // Данные аккаунта гость не запрашивает: без сессии сервер ответил бы «нужен вход».
+  const subscription = useAsync(() => (guest ? Promise.resolve(null) : getSubscription()), [guest]);
+  const protocol = useAsync(() => (guest ? Promise.resolve(null) : getProtocol()), [guest]);
+  const devices = useAsync(() => (guest ? Promise.resolve(null) : getDevices()), [guest]);
 
   const loadNodes = useCallback(async (id: string) => {
     const mine = ++loadSeq.current;
     setNodesError(null);
+    if (!id) {
+      setNodes([]);
+      setSelectedNode('');
+      return;
+    }
     try {
       const list = await listNodes(id);
       if (mine !== loadSeq.current) return;
@@ -127,6 +142,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
   }, []);
 
   const refreshPings = useCallback(async () => {
+    if (!sourceId) return;
     const mine = ++pingSeq.current;
     setPinging(true);
     setPings((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, undefined])));
@@ -143,12 +159,21 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
 
   // Список подписок и текущее состояние подключения.
   useEffect(() => {
-    void listSources().then(setSources).catch(() => undefined);
+    void listSources()
+      .then((list) => {
+        const shown = visibleSources(list);
+        setSources(shown);
+        // Гость: сразу выбираем первую свою подписку, если она уже есть.
+        if (guest) setSourceId((current) => current || shown[0]?.id || '');
+      })
+      .catch(() => undefined);
     void appSettings().then(setSettings).catch(() => undefined);
     void connectionStatus()
       .then((current) => {
         setStatus(current);
-        if (current.connected && current.source_id) setSourceId(current.source_id);
+        if (current.connected && current.source_id && !(guest && current.source_id === ACCOUNT_SOURCE)) {
+          setSourceId(current.source_id);
+        }
         if (current.node_remark && !current.auto) setSelectedNode(current.node_remark);
       })
       .catch(() => undefined);
@@ -161,7 +186,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
     void protocol.reload();
     void devices.reload();
     void listSources()
-      .then(setSources)
+      .then((list) => setSources(visibleSources(list)))
       .catch(() => undefined);
     void loadNodes(sourceId).then(() => refreshPings());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -303,8 +328,9 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
     if (!window.confirm(`Удалить «${name}» из приложения?`)) return;
     try {
       await removeSource(sourceId);
-      setSources(await listSources());
-      setSourceId(ACCOUNT_SOURCE);
+      const rest = visibleSources(await listSources());
+      setSources(rest);
+      setSourceId(guest ? (rest[0]?.id ?? '') : ACCOUNT_SOURCE);
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -321,7 +347,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
 
   async function handleSourceAdded(added: SourceSummary) {
     setAddOpen(false);
-    setSources(await listSources());
+    setSources(visibleSources(await listSources()));
     setSourceId(added.id);
   }
 
@@ -341,7 +367,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
         </button>
       }
     >
-      {sources.length <= 1 && !hintHidden && (
+      {!guest && sources.length <= 1 && !hintHidden && (
         <div className="hint-bar" role="note">
           <span>
             Нажмите <strong>+</strong> в правом верхнем углу, чтобы добавить другую подписку
@@ -368,6 +394,19 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
         </select>
       )}
 
+      {guest && sources.length === 0 ? (
+        <section className="card card-glow">
+          <span className="label">Своя подписка</span>
+          <p style={{ margin: 0 }}>Добавьте ссылку подписки любого сервиса — её серверы появятся здесь, и можно подключаться.</p>
+          <Button onClick={() => setAddOpen(true)}>Добавить подписку</Button>
+          <p className="muted" style={{ margin: 0 }}>
+            Хотите VPN Zexor? Откройте вкладку «Вход», войдите или зарегистрируйтесь — и сервис Zexor станет доступен.
+          </p>
+          <Button variant="secondary" onClick={onOpenSubscription}>
+            Войти или зарегистрироваться
+          </Button>
+        </section>
+      ) : (
       <section className="card card-glow card-raised">
         <div className="row">
           <ModeSlider value={tunnelMode} disabled={busy || !settings} onChange={(mode) => void handleModeChange(mode)} />
@@ -419,21 +458,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
         {autoInfo && (status.connected || busy) && <p className="muted" style={{ margin: 0 }}>{autoInfo}</p>}
         {(error || nodesError) && <p className="form-error">{error ?? nodesError}</p>}
       </section>
-
-      <section className="card">
-        <div className="row">
-          <span className="label">Маршрутизация</span>
-          {settings && settings.routing_apps.length > 0 && (
-            <span className="chip">{settings.routing_mode === 'only' ? 'Только ' : 'Кроме '}{settings.routing_apps.length}</span>
-          )}
-        </div>
-        <p className="muted" style={{ margin: 0 }}>
-          Выберите, какие приложения идут через VPN, а какие — напрямую, в обход него.
-        </p>
-        <Button variant="secondary" onClick={onOpenRouting}>
-          Настроить маршрутизацию
-        </Button>
-      </section>
+      )}
 
       {isAccount && (
         <section className="card">
@@ -491,6 +516,21 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting }: 
           )}
         </section>
       )}
+
+      <section className="card">
+        <div className="row">
+          <span className="label">Маршрутизация</span>
+          {settings && settings.routing_apps.length > 0 && (
+            <span className="chip">{settings.routing_mode === 'only' ? 'Только ' : 'Кроме '}{settings.routing_apps.length}</span>
+          )}
+        </div>
+        <p className="muted" style={{ margin: 0 }}>
+          Выберите, какие приложения идут через VPN, а какие — напрямую, в обход него.
+        </p>
+        <Button variant="secondary" onClick={onOpenRouting}>
+          Настроить маршрутизацию
+        </Button>
+      </section>
 
       {adminPrompt && (
         <Modal title="Нужны права администратора" onClose={() => setAdminPrompt(false)}>

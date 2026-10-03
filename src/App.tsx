@@ -16,7 +16,8 @@ import { currentSession } from './lib/commands';
 /** Раз в час обновляем подписку: срок, трафик, список серверов. */
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 
-type Screen = { kind: 'loading' } | { kind: 'login' } | { kind: 'app' };
+/** `guest` — без аккаунта: только своя подписка на главной и вкладка входа. */
+type Screen = { kind: 'loading' } | { kind: 'guest' } | { kind: 'app' };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ kind: 'loading' });
@@ -24,16 +25,20 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const updatePhase = useAutoUpdate();
 
-  const goToLogin = useCallback(() => setScreen({ kind: 'login' }), []);
+  // Сессия потеряна или пользователь вышел: остаёмся в приложении как гость, на вкладке входа.
+  const goToLogin = useCallback(() => {
+    setTab('login');
+    setScreen({ kind: 'guest' });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     currentSession()
       .then((session) => {
-        if (!cancelled) setScreen(session ? { kind: 'app' } : { kind: 'login' });
+        if (!cancelled) setScreen(session ? { kind: 'app' } : { kind: 'guest' });
       })
       .catch(() => {
-        if (!cancelled) setScreen({ kind: 'login' });
+        if (!cancelled) setScreen({ kind: 'guest' });
       });
     return () => {
       cancelled = true;
@@ -59,20 +64,33 @@ export default function App() {
     );
   }
 
-  if (screen.kind === 'login') {
+  if (screen.kind === 'guest') {
     return (
-      <Login
-        onSuccess={() => {
-          setTab('home');
-          setScreen({ kind: 'app' });
-        }}
-      />
+      <>
+        <UpdateOverlay phase={updatePhase} />
+        {tab === 'routing' ? (
+          <RoutingPage onBack={() => setTab('home')} />
+        ) : tab === 'login' ? (
+          <Login
+            onSuccess={() => {
+              setTab('home');
+              setScreen({ kind: 'app' });
+            }}
+          />
+        ) : (
+          <Home guest refreshKey={refreshKey} onOpenSubscription={() => setTab('login')} onOpenRouting={() => setTab('routing')} />
+        )}
+        <BottomNav active={tab === 'routing' ? 'home' : tab} onChange={setTab} guest />
+      </>
     );
   }
 
   return (
     <SupportUnreadProvider enabled>
-      <Shell tab={tab} setTab={setTab} refreshKey={refreshKey} updatePhase={updatePhase} onLoggedOut={goToLogin} />
+      <Shell tab={tab} setTab={setTab} refreshKey={refreshKey} updatePhase={updatePhase} onLoggedOut={() => {
+        setTab('home');
+        setScreen({ kind: 'guest' });
+      }} />
     </SupportUnreadProvider>
   );
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { ChatIcon, HomeIcon, ShieldIcon, SparklesIcon, UserIcon } from './Icons';
 
-export type Tab = 'home' | 'subscription' | 'adblock' | 'support' | 'profile';
+export type Tab = 'home' | 'subscription' | 'adblock' | 'support' | 'profile' | 'login';
 
 const ITEMS: { tab: Tab; label: string; icon: ReactNode }[] = [
   { tab: 'home', label: 'Главная', icon: <HomeIcon /> },
@@ -11,17 +11,25 @@ const ITEMS: { tab: Tab; label: string; icon: ReactNode }[] = [
   { tab: 'profile', label: 'Профиль', icon: <UserIcon /> },
 ];
 
+/** Без аккаунта доступны только главная (своя подписка) и вход. */
+const GUEST_ITEMS: { tab: Tab; label: string; icon: ReactNode }[] = [
+  { tab: 'home', label: 'Главная', icon: <HomeIcon /> },
+  { tab: 'login', label: 'Вход', icon: <UserIcon /> },
+];
+
 interface Props {
   active: Tab;
   onChange: (tab: Tab) => void;
   /** Вкладки с маленьким красным кружком (непрочитанное). */
   dots?: Partial<Record<Tab, boolean>>;
+  /** Пользователь не вошёл в аккаунт — показываем только «Главная» и «Вход». */
+  guest?: boolean;
 }
 
-export default function BottomNav({ active, onChange, dots }: Props) {
+export default function BottomNav({ active, onChange, dots, guest }: Props) {
   return (
     <nav className="bottom-nav" aria-label="Разделы">
-      {ITEMS.map((item) => (
+      {(guest ? GUEST_ITEMS : ITEMS).map((item) => (
         <button
           key={item.tab}
           type="button"
