@@ -39,6 +39,11 @@ pub struct Info {
     pub running: bool,
 }
 
+#[derive(Debug, Deserialize)]
+struct CrashText {
+    text: String,
+}
+
 pub struct Vpn<R: Runtime>(pub PluginHandle<R>);
 
 impl<R: Runtime> Vpn<R> {
@@ -64,6 +69,12 @@ impl<R: Runtime> Vpn<R> {
     pub fn stop(&self) -> Result<(), VpnError> {
         let _: serde_json::Value = self.0.run_mobile_plugin("stop", json!({}))?;
         Ok(())
+    }
+
+    /// Отчёт о прошлом сбое приложения (пустая строка — сбоев не было); при чтении он сбрасывается.
+    pub async fn crashes(&self) -> Result<String, VpnError> {
+        let reply: CrashText = self.0.run_mobile_plugin_async("crashes", json!({})).await?;
+        Ok(reply.text)
     }
 
     pub fn info_blocking(&self) -> Result<Info, VpnError> {

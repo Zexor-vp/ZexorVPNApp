@@ -37,6 +37,7 @@ import {
   type SourceSummary,
 } from '../lib/commands';
 import { CABINET_URL } from '../lib/cabinet';
+import { crashReport } from '../lib/commands';
 
 const STATUS_POLL_MS = 2000;
 
@@ -94,8 +95,14 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [adminPrompt, setAdminPrompt] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [crash, setCrash] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Android: если прошлый запуск завершился аварийно, показываем причину — по ней можно понять, что случилось.
+  useEffect(() => {
+    if (isMobile) void crashReport().then(setCrash).catch(() => undefined);
+  }, []);
   const [addOpen, setAddOpen] = useState(false);
   const [hintHidden, setHintHidden] = useState(() => {
     try {
@@ -422,6 +429,19 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
         </>
       }
     >
+      {crash && (
+        <div className="hint-bar" role="alert" style={{ alignItems: 'flex-start' }}>
+          <span style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>
+            {t('Приложение аварийно завершилось в прошлый раз. Сделайте скриншот этого сообщения и отправьте в поддержку:')}
+            {'\n'}
+            {crash}
+          </span>
+          <button className="hint-close" aria-label={t('Скрыть подсказку')} onClick={() => setCrash('')}>
+            ✕
+          </button>
+        </div>
+      )}
+
       {!guest && sources.length <= 1 && !hintHidden && (
         <div className="hint-bar" role="note">
           <span>

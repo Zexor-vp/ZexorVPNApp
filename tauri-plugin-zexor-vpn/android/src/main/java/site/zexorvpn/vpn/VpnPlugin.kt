@@ -1,6 +1,9 @@
 package site.zexorvpn.vpn
 
 import android.app.Activity
+import android.app.ActivityManager
+import android.app.ApplicationExitInfo
+import android.os.Build
 import android.net.VpnService
 import android.webkit.WebView
 import androidx.activity.result.ActivityResult
@@ -21,6 +24,8 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
     /** geoip.dat / geosite.dat лежат в ресурсах APK; xray читает их с диска, поэтому копируем в папку приложения. */
     override fun load(webView: WebView) {
         passInsetsToPage(webView)
+        recordPreviousExit()
+        installCrashLogger()
         val dir = File(activity.filesDir, "geo").apply { mkdirs() }
         // Базы в APK сжаты, поэтому `openFd` для них падает; читаем обычным `open`. Перекопируем, если файла нет
         // или он старше установленной версии приложения (после обновления базы могли смениться).
@@ -43,6 +48,70 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
                 android.util.Log.e("ZexorVpn", "не удалось подготовить $name", e)
             }
         }
+    }
+
+    private val reportFile get() = File(activity.filesDir, "last_crash.txt")
+
+    /**
+     * Android помнит, почему завершился прошлый процесс приложения (краш, нехватка памяти, убит системой...).
+     * Сохраняем это в файл — по нему видно, почему приложение «вылетело», когда логов под рукой нет.
+     */
+    private fun recordPreviousExit() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        try {
+            val manager = activity.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
+            val last = manager.getHistoricalProcessExitReasons(activity.packageName, 0, 1).firstOrNull() ?: return
+            val abnormal = when (last.reason) {
+                ApplicationExitInfo.REASON_EXIT_SELF,
+                ApplicationExitInfo.REASON_USER_REQUESTED,
+                ApplicationExitInfo.REASON_USER_STOPPED,
+                ApplicationExitInfo.REASON_PERMISSION_CHANGE,
+                -> false
+                else -> true
+            }
+            if (!abnormal) return
+            val name = when (last.reason) {
+                ApplicationExitInfo.REASON_CRASH -> "ошибка в Java/Kotlin"
+                ApplicationExitInfo.REASON_CRASH_NATIVE -> "падение нативного кода"
+                ApplicationExitInfo.REASON_LOW_MEMORY -> "системе не хватило памяти"
+                ApplicationExitInfo.REASON_SIGNALED -> "процесс убит сигналом ${last.status}"
+                ApplicationExitInfo.REASON_ANR -> "приложение не отвечало"
+                ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "чрезмерное потребление ресурсов"
+                ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "ошибка запуска"
+                else -> "причина ${last.reason}"
+            }
+            val ageMinutes = (System.currentTimeMillis() - last.timestamp) / 60000
+            if (ageMinutes > 24 * 60) return
+            val description = last.description?.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""
+            reportFile.appendText("Прошлый запуск завершился ($ageMinutes мин назад): $name$description\n")
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Необработанная ошибка в потоках приложения: пишем причину в тот же файл и отдаём системе как обычно. */
+    private fun installCrashLogger() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+            try {
+                reportFile.appendText("Ошибка в потоке ${thread.name}: ${error.stackTraceToString().take(1500)}\n")
+            } catch (_: Exception) {
+            }
+            previous?.uncaughtException(thread, error)
+        }
+    }
+
+    /** Текст отчёта о прошлом сбое (и очищает его, чтобы не показывать повторно). */
+    @Command
+    fun crashes(invoke: Invoke) {
+        val result = JSObject()
+        try {
+            val text = if (reportFile.exists()) reportFile.readText().takeLast(2500) else ""
+            if (text.isNotEmpty()) reportFile.delete()
+            result.put("text", text)
+        } catch (_: Exception) {
+            result.put("text", "")
+        }
+        invoke.resolve(result)
     }
 
     /**
@@ -118,7 +187,11 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
 
     @Command
     fun stop(invoke: Invoke) {
-        ZexorVpnService.stop(activity)
+        try {
+            ZexorVpnService.stop(activity)
+        } catch (_: Exception) {
+            // Сервис уже остановлен или приложение в фоне — останавливать нечего.
+        }
         invoke.resolve()
     }
 }

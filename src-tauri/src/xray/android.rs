@@ -70,6 +70,17 @@ pub async fn establish(app: &AppHandle) -> Result<i32, ConnectError> {
     let vpn = app
         .try_state::<Vpn<Wry>>()
         .ok_or_else(|| ConnectError::VpnSetup("плагин VPN не найден".to_string()))?;
+    // После быстрого «отключить — включить» прежний сервис ещё может закрывать свой интерфейс: дожидаемся, пока
+    // он остановится, иначе старый экземпляр и новый мешают друг другу.
+    if vpn.info().await.map(|info| info.running).unwrap_or(false) {
+        let _ = vpn.stop();
+        for _ in 0..20 {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            if !vpn.info().await.map(|info| info.running).unwrap_or(false) {
+                break;
+            }
+        }
+    }
     let granted = vpn
         .prepare()
         .await

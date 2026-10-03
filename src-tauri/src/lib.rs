@@ -129,6 +129,7 @@ pub fn run() {
             xray::commands::ping_nodes,
             xray::commands::test_node,
             xray::commands::auto_connect,
+            xray::commands::crash_report,
             settings::app_settings,
             settings::set_auto,
             settings::set_tunnel_mode,

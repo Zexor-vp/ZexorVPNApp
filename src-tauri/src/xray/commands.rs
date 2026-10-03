@@ -326,3 +326,17 @@ pub async fn auto_connect(
         ms: outcome.ms,
     })
 }
+
+/// Android: причина прошлого вылета приложения (пусто, если его не было). На других платформах всегда пусто.
+#[tauri::command]
+pub async fn crash_report(app: AppHandle) -> String {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        if let Some(vpn) = app.try_state::<tauri_plugin_zexor_vpn::Vpn<tauri::Wry>>() {
+            return vpn.crashes().await.unwrap_or_default();
+        }
+    }
+    let _ = app;
+    String::new()
+}

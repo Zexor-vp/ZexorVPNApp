@@ -54,6 +54,9 @@ class ZexorVpnService : VpnService() {
         }
     }
 
+    /** TUN, созданный именно этим экземпляром сервиса: при пересоздании чужой интерфейс закрывать нельзя. */
+    private var ownTun: ParcelFileDescriptor? = null
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             teardown()
@@ -81,6 +84,7 @@ class ZexorVpnService : VpnService() {
             // Сам xray и запросы приложения идут мимо туннеля.
             builder.addDisallowedApplication(packageName)
             val descriptor = builder.establish()
+            ownTun = descriptor
             tun = descriptor
             running = descriptor != null
             future?.complete(descriptor != null)
@@ -122,12 +126,17 @@ class ZexorVpnService : VpnService() {
     }
 
     private fun teardown(keepForeground: Boolean = false) {
+        // Быстрое «выключить — включить» пересоздаёт сервис: старый экземпляр не должен закрыть новый TUN.
+        val mine = ownTun
         try {
-            tun?.close()
+            mine?.close()
         } catch (_: Exception) {
         }
-        tun = null
-        running = false
+        ownTun = null
+        if (mine != null && tun === mine) {
+            tun = null
+            running = false
+        }
         if (!keepForeground) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_REMOVE)

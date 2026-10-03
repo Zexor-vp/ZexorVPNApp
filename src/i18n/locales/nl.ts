@@ -270,6 +270,7 @@ const dict: Record<string, string> = {
   "подписка недоступна: проверьте, что она активна и не превышен лимит устройств": "Het abonnement is niet beschikbaar: controleer of het actief is en de apparaatlimiet niet overschreden is",
   "подписка не найдена — возможно, она удалена или ссылка изменилась": "Abonnement niet gevonden — mogelijk verwijderd of de link is gewijzigd",
   "слишком много запросов, повторите через минуту": "Te veel verzoeken, probeer het over een minuut opnieuw",
+  "Приложение аварийно завершилось в прошлый раз. Сделайте скриншот этого сообщения и отправьте в поддержку:": "De app is de vorige keer gecrasht. Maak een schermafbeelding van dit bericht en stuur die naar support:",
   "Прикрепить фото": "Foto toevoegen",
   "Убрать фото": "Foto verwijderen",
   "можно прикладывать только изображения": "alleen afbeeldingen kunnen worden toegevoegd",

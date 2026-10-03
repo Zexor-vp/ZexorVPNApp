@@ -273,3 +273,6 @@ export interface ApkUpdate {
 
 /** Android: последний релиз с APK, если он новее установленной версии. */
 export const checkApkUpdate = (): Promise<ApkUpdate | null> => invoke('check_apk_update');
+
+/** Android: причина прошлого вылета приложения (пусто, если его не было); при чтении сбрасывается. */
+export const crashReport = (): Promise<string> => invoke('crash_report');
