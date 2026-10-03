@@ -270,6 +270,7 @@ const dict: Record<string, string> = {
   "подписка недоступна: проверьте, что она активна и не превышен лимит устройств": "L’abonnement est indisponible : vérifiez qu’il est actif et que la limite d’appareils n’est pas dépassée",
   "подписка не найдена — возможно, она удалена или ссылка изменилась": "Abonnement introuvable — il a peut-être été supprimé ou le lien a changé",
   "слишком много запросов, повторите через минуту": "Trop de requêtes, réessayez dans une minute",
+  "Данные подписки появятся, когда восстановится связь.": "Les données de l'abonnement apparaîtront dès que la connexion sera rétablie.",
   "Пожаловаться на рекламу": "Signaler une publicité",
   "Реклама всё ещё показывается на сайте? Укажите его адрес — мы проверим и добавим в список блокировки.": "Vous voyez encore de la publicité sur un site ? Indiquez son adresse — nous la vérifierons et l'ajouterons à la liste de blocage.",
   "Адрес сайта": "Adresse du site",

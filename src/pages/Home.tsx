@@ -621,7 +621,12 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
               <span className="spinner spinner-lg" aria-hidden />
             </div>
           ) : subscription.error ? (
-            <p className="form-error">{subscription.error}</p>
+            // Та же ошибка уже показана в карточке подключения — второй раз её не повторяем.
+            subscription.error === (error ?? nodesError) ? (
+              <p className="muted">{t('Данные подписки появятся, когда восстановится связь.')}</p>
+            ) : (
+              <p className="form-error">{subscription.error}</p>
+            )
           ) : (
             !hasSubscription && (
               <>
