@@ -15,7 +15,9 @@ import {
   type AdblockState,
   type SessionStats,
 } from '../lib/commands';
+import { reportAuthLoss } from '../hooks/useAsync';
 import { useT } from '../i18n';
+import { reportAd } from '../lib/cabinet';
 
 const STATS_POLL_MS = 2000;
 
@@ -91,6 +93,8 @@ export default function AdblockPage() {
           </div>
         </div>
       </section>
+
+      <ReportAdCard />
 
       <DomainList
         title={t('Всегда блокировать')}
@@ -178,6 +182,78 @@ function DomainList({ title, hint, kind, items, onAdd, onRemove }: ListProps) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+/** Приводит ввод («example.com», «https://example.com/page») к ссылке или `null`, если это не адрес сайта. */
+function normalizeSite(raw: string): string | null {
+  const text = raw.trim();
+  if (!text || /\s/.test(text)) return null;
+  const withScheme = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+  try {
+    const url = new URL(withScheme);
+    return url.hostname.includes('.') ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** «Пожаловаться на рекламу»: адрес сайта, где реклама всё ещё видна, уходит на модерацию. */
+function ReportAdCard() {
+  const t = useT();
+  const [value, setValue] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setSent(false);
+    const url = normalizeSite(value);
+    if (!url) {
+      setError(t('введите адрес сайта, например example.com'));
+      return;
+    }
+    setSending(true);
+    try {
+      await reportAd(url);
+      setValue('');
+      setSent(true);
+    } catch (err) {
+      if (!reportAuthLoss(err)) setError(errorMessage(err));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <section className="card">
+      <span className="label">{t('Пожаловаться на рекламу')}</span>
+      <p className="muted" style={{ margin: 0 }}>
+        {t('Реклама всё ещё показывается на сайте? Укажите его адрес — мы проверим и добавим в список блокировки.')}
+      </p>
+      <form className="row" onSubmit={submit} style={{ gap: '0.5rem' }}>
+        <input
+          className="text-input"
+          placeholder={t('Адрес сайта')}
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setSent(false);
+          }}
+          aria-label={t('Адрес сайта')}
+          inputMode="url"
+          autoCapitalize="off"
+          autoCorrect="off"
+        />
+        <Button type="submit" variant="secondary" loading={sending} disabled={!value.trim()}>
+          {t('Отправить')}
+        </Button>
+      </form>
+      {error && <p className="form-error">{error}</p>}
+      {sent && <p className="muted">{t('Спасибо! Жалоба отправлена — мы проверим сайт.')}</p>}
     </section>
   );
 }

@@ -347,3 +347,7 @@ export const createTopUp = (amountMinor: number, method: string, option?: string
 export function balanceFromOptions(options: Pick<PurchaseOptions, 'currency' | 'balance_kopeks' | 'balance_usd_cents' | 'balance_eur_cents'>): number {
   return options.currency === 'EUR' ? options.balance_eur_cents : options.currency === 'USD' ? options.balance_usd_cents : options.balance_kopeks;
 }
+
+/** «Реклама всё ещё показывается здесь» — жалоба для модерации списка блокировки (как в расширении MyBlock). */
+export const reportAd = (url: string): Promise<{ ok: boolean }> =>
+  cabinetRequest('POST', `${API}/adblock/report-ad`, { url });
