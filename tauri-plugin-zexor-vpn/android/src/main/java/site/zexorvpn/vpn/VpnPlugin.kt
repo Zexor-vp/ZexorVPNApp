@@ -148,6 +148,8 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
         result.put("libDir", activity.applicationInfo.nativeLibraryDir)
         result.put("filesDir", activity.filesDir.absolutePath)
         result.put("running", ZexorVpnService.running)
+        result.put("model", "${Build.MANUFACTURER} ${Build.MODEL}")
+        result.put("osVersion", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         invoke.resolve(result)
     }
 

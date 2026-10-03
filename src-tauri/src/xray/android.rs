@@ -34,6 +34,7 @@ pub async fn init_paths(app: &AppHandle) {
     };
     match vpn.info().await {
         Ok(info) => {
+            crate::error_report::set_device(&info.os_version, &info.model);
             let paths = Paths {
                 lib_dir: PathBuf::from(info.lib_dir),
                 files_dir: PathBuf::from(info.files_dir),

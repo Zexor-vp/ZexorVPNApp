@@ -37,6 +37,11 @@ pub struct Info {
     pub files_dir: String,
     /// VPN-сервис сейчас держит туннель.
     pub running: bool,
+    /// Модель устройства и версия Android (для отчётов об ошибках).
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub os_version: String,
 }
 
 #[derive(Debug, Deserialize)]

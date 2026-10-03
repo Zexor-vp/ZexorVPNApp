@@ -36,7 +36,22 @@ impl From<ConnectError> for CommandError {
             | ConnectError::FetchSubscription(_) => CommandError::Network(err.to_string()),
             ConnectError::NoSubscription => CommandError::NoSubscription(err.to_string()),
             ConnectError::NeedsElevation => CommandError::NeedsElevation(err.to_string()),
-            other => CommandError::Other(other.to_string()),
+            other => {
+                // Технические сбои (xray не стартовал, нет бинарника, не создался VPN...) — на сервер,
+                // чтобы админ видел их, а не только пользователь на экране.
+                if matches!(
+                    other,
+                    ConnectError::BinaryMissing(_)
+                        | ConnectError::Process(_)
+                        | ConnectError::Proxy(_)
+                        | ConnectError::TunDriverMissing(_)
+                        | ConnectError::VpnSetup(_)
+                        | ConnectError::Parse(_)
+                ) {
+                    crate::error_report::report("connect", other.to_string());
+                }
+                CommandError::Other(other.to_string())
+            }
         }
     }
 }
@@ -334,7 +349,9 @@ pub async fn crash_report(app: AppHandle) -> String {
     {
         use tauri::Manager;
         if let Some(vpn) = app.try_state::<tauri_plugin_zexor_vpn::Vpn<tauri::Wry>>() {
-            return vpn.crashes().await.unwrap_or_default();
+            let text = vpn.crashes().await.unwrap_or_default();
+            crate::error_report::report("crash", text.clone());
+            return text;
         }
     }
     let _ = app;

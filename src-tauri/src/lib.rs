@@ -6,6 +6,7 @@ pub mod adblock;
 pub mod apk_update;
 pub mod auth;
 pub mod cabinet;
+pub mod error_report;
 pub mod settings;
 pub mod state;
 pub mod sync;
@@ -130,6 +131,7 @@ pub fn run() {
             xray::commands::test_node,
             xray::commands::auto_connect,
             xray::commands::crash_report,
+            error_report::report_app_error,
             settings::app_settings,
             settings::set_auto,
             settings::set_tunnel_mode,
@@ -155,6 +157,7 @@ pub fn run() {
             adblock::commands::reset_adblock_session_stats,
         ])
         .setup(|app| {
+            error_report::install_panic_hook();
             // Не-Windows (Android): корень данных приложения — закрытая папка приложения, а не %LOCALAPPDATA%.
             // Состояние создаём уже после этого, чтобы настройки читались из правильного места.
             #[cfg(not(windows))]

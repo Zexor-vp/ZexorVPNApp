@@ -269,6 +269,24 @@ impl ApiClient {
         })
     }
 
+    /// Сообщает бэкенду об ошибке приложения (`POST /api/cabinet/telemetry/app-error`, без авторизации).
+    pub async fn report_app_error(&self, body: &serde_json::Value) -> Result<(), ApiError> {
+        let response = self
+            .http
+            .post(self.url("/api/cabinet/telemetry/app-error"))
+            .json(body)
+            .send()
+            .await?;
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(ApiError::Server {
+                status: response.status().as_u16(),
+                message: "ошибка не принята сервером".to_string(),
+            })
+        }
+    }
+
     /// Загружает фото для сообщения в поддержку (`POST /api/cabinet/media/upload`, multipart).
     /// Тело формы собирается вручную: готовой multipart-обёртки в зависимостях нет, а поля всего два.
     pub async fn upload_photo(
