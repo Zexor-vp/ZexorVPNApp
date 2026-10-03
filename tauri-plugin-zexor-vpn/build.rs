@@ -1,6 +1,14 @@
 // Команды плагина вызываются только из Rust-кода приложения (не из JS), поэтому для них не нужны
 // разрешения в capabilities; список нужен сборке, чтобы подключить Android-модуль.
-const COMMANDS: &[&str] = &["prepare", "establish", "stop", "info", "crashes"];
+const COMMANDS: &[&str] = &[
+    "prepare",
+    "establish",
+    "stop",
+    "info",
+    "crashes",
+    "quickaction",
+    "background",
+];
 
 fn main() {
     tauri_plugin::Builder::new(COMMANDS)

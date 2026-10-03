@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tile_label">Zexor VPN</string>
+    <string name="state_on">Connected</string>
+    <string name="state_off">Disconnected</string>
+    <string name="widget_name">Zexor VPN quick toggle</string>
+</resources>

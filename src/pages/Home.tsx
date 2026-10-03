@@ -218,6 +218,23 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
     void refreshRef.current();
   }, [refreshKey]);
 
+  // Быстрое включение с плитки/виджета не удалось (нет входа, нет разрешения на VPN...) — показываем причину.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    listen<string>('quick-error', (event) => setError(t(String(event.payload))))
+      .then((off) => {
+        if (cancelled) off();
+        else unlisten = off;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Админ нажал «обновить подписки в приложениях» — Rust сообщает об этом событием.
   useEffect(() => {
     let unlisten: (() => void) | undefined;

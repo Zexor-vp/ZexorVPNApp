@@ -45,6 +45,11 @@ pub struct Info {
 }
 
 #[derive(Debug, Deserialize)]
+struct QuickAction {
+    action: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct CrashText {
     text: String,
 }
@@ -80,6 +85,24 @@ impl<R: Runtime> Vpn<R> {
     pub async fn crashes(&self) -> Result<String, VpnError> {
         let reply: CrashText = self.0.run_mobile_plugin_async("crashes", json!({})).await?;
         Ok(reply.text)
+    }
+
+    /// Действие с плитки/виджета (`"toggle"`), которое ещё не выполнено; пустая строка — нет. Забирается один раз.
+    pub async fn quick_action(&self) -> Result<String, VpnError> {
+        let reply: QuickAction = self
+            .0
+            .run_mobile_plugin_async("quickaction", json!({}))
+            .await?;
+        Ok(reply.action)
+    }
+
+    /// Убирает окно приложения в фон.
+    pub async fn background(&self) -> Result<(), VpnError> {
+        let _: serde_json::Value = self
+            .0
+            .run_mobile_plugin_async("background", json!({}))
+            .await?;
+        Ok(())
     }
 
     pub fn info_blocking(&self) -> Result<Info, VpnError> {

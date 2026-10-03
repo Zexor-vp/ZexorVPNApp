@@ -87,6 +87,7 @@ class ZexorVpnService : VpnService() {
             ownTun = descriptor
             tun = descriptor
             running = descriptor != null
+            QuickSurfaces.refresh(this)
             future?.complete(descriptor != null)
         } catch (error: Exception) {
             running = false
@@ -137,6 +138,7 @@ class ZexorVpnService : VpnService() {
             tun = null
             running = false
         }
+        QuickSurfaces.refresh(this)
         if (!keepForeground) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_REMOVE)

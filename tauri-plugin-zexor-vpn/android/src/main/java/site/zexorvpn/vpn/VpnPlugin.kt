@@ -1,6 +1,7 @@
 package site.zexorvpn.vpn
 
 import android.app.Activity
+import android.content.Intent
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
 import android.os.Build
@@ -26,6 +27,7 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
         passInsetsToPage(webView)
         recordPreviousExit()
         installCrashLogger()
+        takeQuickAction(activity.intent)
         val dir = File(activity.filesDir, "geo").apply { mkdirs() }
         // Базы в APK сжаты, поэтому `openFd` для них падает; читаем обычным `open`. Перекопируем, если файла нет
         // или он старше установленной версии приложения (после обновления базы могли смениться).
@@ -48,6 +50,32 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
                 android.util.Log.e("ZexorVpn", "не удалось подготовить $name", e)
             }
         }
+    }
+
+    /** Приложение уже запущено, а плитка/виджет нажаты снова: окно приходит как новый Intent. */
+    override fun onNewIntent(intent: Intent) {
+        takeQuickAction(intent)
+    }
+
+    private fun takeQuickAction(intent: Intent?) {
+        val action = intent?.getStringExtra(QuickSurfaces.EXTRA) ?: return
+        intent.removeExtra(QuickSurfaces.EXTRA)
+        QuickSurfaces.pending = action
+    }
+
+    /** Действие с плитки/виджета, которое ещё не выполнено (пустая строка — нет). Забирается один раз. */
+    @Command
+    fun quickaction(invoke: Invoke) {
+        val action = QuickSurfaces.pending
+        QuickSurfaces.pending = null
+        invoke.resolve(JSObject().put("action", action ?: ""))
+    }
+
+    /** Убирает окно приложения обратно в фон (после «тихого» включения с плитки/виджета). */
+    @Command
+    fun background(invoke: Invoke) {
+        activity.runOnUiThread { activity.moveTaskToBack(true) }
+        invoke.resolve()
     }
 
     private val reportFile get() = File(activity.filesDir, "last_crash.txt")

@@ -174,6 +174,7 @@ pub fn run() {
                 tauri::async_runtime::spawn(async move {
                     xray::android::init_paths(&handle).await;
                 });
+                xray::android::spawn_quick_actions(app.handle().clone());
             }
             app.manage(state::AppState::default());
 

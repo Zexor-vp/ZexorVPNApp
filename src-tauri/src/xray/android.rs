@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Emitter, Manager, Wry};
 use tauri_plugin_zexor_vpn::Vpn;
 
 use super::ConnectError;
@@ -111,4 +111,52 @@ pub fn stop() {
             let _ = vpn.stop();
         }
     }
+}
+
+/// «Быстрое включение»: нажатие на плитку шторки или виджет запускает приложение с пометкой, плагин её запоминает,
+/// а здесь она подхватывается: VPN переключается (подписка аккаунта, авто-режим), и окно уходит обратно в фон.
+/// Если не вышло (нет входа, нет разрешения на VPN и т. п.) — окно остаётся, а причина показывается на главной.
+pub fn spawn_quick_actions(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+            // Пока состояние приложения не готово, действие не забираем — иначе оно потеряется.
+            if app.try_state::<crate::state::AppState>().is_none() {
+                continue;
+            }
+            let Some(vpn) = app.try_state::<Vpn<Wry>>() else {
+                continue;
+            };
+            let Ok(action) = vpn.quick_action().await else {
+                continue;
+            };
+            if action != "toggle" {
+                continue;
+            }
+            match toggle(&app).await {
+                Ok(()) => {
+                    let _ = vpn.background().await;
+                }
+                Err(message) => {
+                    let _ = app.emit("quick-error", message);
+                }
+            }
+        }
+    });
+}
+
+async fn toggle(app: &AppHandle) -> Result<(), String> {
+    let state = app.state::<crate::state::AppState>();
+    let connected = state.connection.lock().unwrap().process.is_some();
+    if connected {
+        return super::disconnect_now(&state).map_err(|e| e.to_string());
+    }
+    let nodes = super::fetch_nodes(&state, Some(zexor_vpn_core::sources::ACCOUNT_SOURCE))
+        .await
+        .map_err(|e| e.to_string())?;
+    super::disconnect_now(&state).map_err(|e| e.to_string())?;
+    super::connect_auto(app, &state, &nodes, zexor_vpn_core::sources::ACCOUNT_SOURCE)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
