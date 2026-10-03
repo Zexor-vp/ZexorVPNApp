@@ -5,7 +5,6 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import Button from '../components/Button';
 import LanguageCard from '../components/LanguageCard';
 import PageShell from '../components/PageShell';
-import Segmented from '../components/Segmented';
 import Toggle from '../components/Toggle';
 import { reportAuthLoss, useAsync } from '../hooks/useAsync';
 import {
@@ -13,7 +12,6 @@ import {
   getMe,
   getReferral,
   requestEmailChange,
-  setCurrency,
   verifyEmailChange,
 } from '../lib/cabinet';
 import { appSettings, errorMessage, logout, setTelemetry } from '../lib/commands';
@@ -53,17 +51,6 @@ export default function ProfilePage({ onLoggedOut }: Props) {
       .then(setVersion)
       .catch(() => undefined);
   }, []);
-
-  async function handleCurrency(next: string) {
-    setNotice(null);
-    try {
-      await setCurrency(next);
-      await me.reload();
-      setNotice({ tone: 'ok', text: t('Валюта изменена.') });
-    } catch (err) {
-      if (!reportAuthLoss(err)) setNotice({ tone: 'error', text: errorMessage(err) });
-    }
-  }
 
   async function handleCopyCode(code: string) {
     try {
@@ -128,19 +115,6 @@ export default function ProfilePage({ onLoggedOut }: Props) {
                 <div className="tile-value">{displayName}</div>
                 <span className="muted">ID {user.id}</span>
               </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <span className="label">{t('Валюта')}</span>
-              <Segmented
-                value={user.currency}
-                onChange={handleCurrency}
-                options={[
-                  { value: 'RUB', label: '₽ RUB' },
-                  { value: 'EUR', label: '€ EUR' },
-                  { value: 'USD', label: '$ USD' },
-                ]}
-              />
-              <span className="muted">{t('Сменить валюту можно, пока на балансе в текущей нет средств.')}</span>
             </div>
           </>
         ) : me.loading ? (
