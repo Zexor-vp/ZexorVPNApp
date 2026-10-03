@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import PageShell from '../components/PageShell';
@@ -6,7 +7,7 @@ import ProgressBar from '../components/ProgressBar';
 import ProtocolMenu from '../components/ProtocolMenu';
 import ModeSlider from '../components/ModeSlider';
 import ServerPicker, { type PingValue } from '../components/ServerPicker';
-import { BoltIcon, PlusIcon, TrashIcon } from '../components/Icons';
+import { BoltIcon, PlusIcon, RefreshIcon, TrashIcon } from '../components/Icons';
 import { reportAuthLoss, useAsync } from '../hooks/useAsync';
 import { getDevices, getProtocol, getSubscription, setProtocol } from '../lib/cabinet';
 import {
@@ -90,6 +91,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [adminPrompt, setAdminPrompt] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [hintHidden, setHintHidden] = useState(() => {
@@ -179,18 +181,48 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
       .catch(() => undefined);
   }, []);
 
-  // Почасовое обновление подписки: срок, трафик, устройства, протокол и список серверов.
+  // Обновление подписки: срок, трафик, устройства, протокол и список серверов. Запускается раз в час,
+  // кнопкой «Обновить» и по команде от сервера (см. событие ниже) — без перезапуска приложения.
+  async function refreshAll() {
+    setRefreshing(true);
+    setError(null);
+    try {
+      await Promise.all([
+        subscription.reload(),
+        protocol.reload(),
+        devices.reload(),
+        listSources()
+          .then((list) => setSources(visibleSources(list)))
+          .catch(() => undefined),
+        loadNodes(sourceId).then(() => refreshPings()),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+  const refreshRef = useRef(refreshAll);
+  refreshRef.current = refreshAll;
+
   useEffect(() => {
     if (refreshKey === 0) return;
-    void subscription.reload();
-    void protocol.reload();
-    void devices.reload();
-    void listSources()
-      .then((list) => setSources(visibleSources(list)))
-      .catch(() => undefined);
-    void loadNodes(sourceId).then(() => refreshPings());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void refreshRef.current();
   }, [refreshKey]);
+
+  // Админ нажал «обновить подписки в приложениях» — Rust сообщает об этом событием.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    listen('subscription-changed', () => void refreshRef.current())
+      .then((off) => {
+        if (cancelled) off();
+        else unlisten = off;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   useEffect(() => {
     setAutoInfo(null);
@@ -362,9 +394,20 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
   return (
     <PageShell
       actions={
-        <button className="icon-btn" aria-label="Добавить подписку" title="Добавить свою подписку" onClick={() => setAddOpen(true)}>
-          <PlusIcon />
-        </button>
+        <>
+          <button
+            className={`icon-btn ${refreshing ? 'icon-btn-spin' : ''}`}
+            aria-label="Обновить"
+            title="Обновить подписку и список серверов"
+            disabled={refreshing}
+            onClick={() => void refreshAll()}
+          >
+            <RefreshIcon />
+          </button>
+          <button className="icon-btn" aria-label="Добавить подписку" title="Добавить свою подписку" onClick={() => setAddOpen(true)}>
+            <PlusIcon />
+          </button>
+        </>
       }
     >
       {!guest && sources.length <= 1 && !hintHidden && (

@@ -5,6 +5,7 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import Button from '../components/Button';
 import PageShell from '../components/PageShell';
 import Segmented from '../components/Segmented';
+import Toggle from '../components/Toggle';
 import { reportAuthLoss, useAsync } from '../hooks/useAsync';
 import {
   formatMoney,
@@ -14,7 +15,7 @@ import {
   setCurrency,
   verifyEmailChange,
 } from '../lib/cabinet';
-import { errorMessage, logout } from '../lib/commands';
+import { appSettings, errorMessage, logout, setTelemetry } from '../lib/commands';
 
 type UpdateState =
   | { kind: 'idle' }
@@ -31,6 +32,13 @@ interface Props {
 export default function ProfilePage({ onLoggedOut }: Props) {
   const me = useAsync(() => getMe(), []);
   const referral = useAsync(() => getReferral(), []);
+  const [telemetry, setTelemetryState] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    appSettings()
+      .then((current) => setTelemetryState(current.telemetry))
+      .catch(() => undefined);
+  }, []);
 
   const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -200,6 +208,16 @@ export default function ProfilePage({ onLoggedOut }: Props) {
             <Button onClick={() => void handleInstallUpdate(updateState.update)}>Установить и перезапустить</Button>
           </div>
         )}
+        <Toggle
+          label="Статистика доступности серверов"
+          hint="Раз в полчаса приложение отправляет время отклика серверов Zexor и название вашей сети (оператора) — без IP-адреса и без привязки к аккаунту. Это помогает быстрее находить блокировки."
+          checked={telemetry ?? true}
+          disabled={telemetry === null}
+          onChange={(enabled) => {
+            setTelemetryState(enabled);
+            void setTelemetry(enabled).catch(() => setTelemetryState(!enabled));
+          }}
+        />
         <p className="muted" style={{ margin: 0 }}>
           Закрытие окна не отключает VPN — приложение остаётся в трее. Выйти полностью можно из меню значка в трее.
         </p>

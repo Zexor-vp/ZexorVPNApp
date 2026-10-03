@@ -36,6 +36,10 @@ pub struct AppSettings {
     /// Авто-выбор сервера включён: список серверов заблокирован, клиент выбирает сам.
     pub auto: bool,
     pub routing: RoutingSettings,
+    /// Отправлять на сервер анонимные замеры доступности серверов Zexor из сети пользователя.
+    pub telemetry_enabled: bool,
+    /// Последняя «эпоха» команды «обновить подписку» от админа, которую приложение уже обработало.
+    pub last_sync_epoch: Option<i64>,
 }
 
 impl Default for AppSettings {
@@ -44,6 +48,8 @@ impl Default for AppSettings {
             tunnel_mode: TunnelMode::Proxy,
             auto: false,
             routing: RoutingSettings::default(),
+            telemetry_enabled: true,
+            last_sync_epoch: None,
         }
     }
 }

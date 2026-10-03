@@ -235,12 +235,24 @@ pub struct NodePing {
 /// Быстрый TCP-пинг всех серверов подписки (параллельно). Показывает, что хост жив и как далеко.
 #[tauri::command]
 pub async fn ping_nodes(
+    app: AppHandle,
     state: State<'_, AppState>,
     source_id: Option<String>,
 ) -> Result<Vec<NodePing>, CommandError> {
     let nodes = fetch_nodes(&state, source_id.as_deref()).await?;
     let nodes: Vec<_> = nodes.into_iter().filter(|n| !n.is_balanced()).collect();
     let pings = probe::tcp_ping_many(&nodes, Duration::from_secs(3)).await;
+    // Замеры серверов нашей подписки уходят на сервер (анонимно, можно отключить в профиле).
+    if source_id.is_none() || source_id.as_deref() == Some(ACCOUNT_SOURCE) {
+        crate::sync::report_pings(
+            &app,
+            nodes
+                .iter()
+                .zip(&pings)
+                .map(|(node, ms)| (node.remark().trim().to_string(), *ms))
+                .collect(),
+        );
+    }
     Ok(nodes
         .iter()
         .zip(pings)

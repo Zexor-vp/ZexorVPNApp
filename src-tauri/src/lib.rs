@@ -7,6 +7,7 @@ pub mod auth;
 pub mod cabinet;
 pub mod settings;
 pub mod state;
+pub mod sync;
 pub mod xray;
 
 use tauri::menu::{Menu, MenuItem};
@@ -115,6 +116,7 @@ pub fn run() {
             settings::add_routing_app,
             settings::remove_routing_app,
             settings::list_running_apps,
+            settings::set_telemetry,
             cabinet::cabinet_request,
             cabinet::open_external,
             cabinet::open_payment_url,
@@ -134,6 +136,7 @@ pub fn run() {
             app.manage(state::ShutdownGuard::new(handle));
             setup_tray(app)?;
             xray::export_geo_assets_dir(app.handle());
+            sync::spawn(app.handle().clone());
 
             // Дополнительный список рекламы обновляется раз в сутки, в фоне и без шума.
             let app_handle = app.handle().clone();

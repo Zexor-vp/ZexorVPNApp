@@ -19,6 +19,8 @@ pub struct SettingsView {
     pub routing_apps: Vec<String>,
     /// Приложение запущено с правами администратора (нужны для режима TUN).
     pub elevated: bool,
+    /// Отправка анонимных замеров доступности серверов Zexor.
+    pub telemetry: bool,
 }
 
 fn view(settings: &AppSettings) -> SettingsView {
@@ -28,6 +30,7 @@ fn view(settings: &AppSettings) -> SettingsView {
         routing_mode: settings.routing.mode,
         routing_apps: settings.routing.apps.clone(),
         elevated: zexor_vpn_core::elevation::is_elevated(),
+        telemetry: settings.telemetry_enabled,
     }
 }
 
@@ -114,6 +117,17 @@ pub fn restart_as_admin(app: AppHandle, state: State<'_, AppState>) -> Result<()
     state.shutdown_blocking();
     app.exit(0);
     Ok(())
+}
+
+#[tauri::command]
+pub fn set_telemetry(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<SettingsView, CommandError> {
+    update(&state, |s| {
+        s.telemetry_enabled = enabled;
+        Ok(())
+    })
 }
 
 #[tauri::command]

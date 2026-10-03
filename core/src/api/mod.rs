@@ -264,7 +264,7 @@ impl ApiClient {
             429 => ApiError::RateLimited,
             code => ApiError::Server {
                 status: code,
-                message: extract_detail(&text),
+                message: extract_detail(code, &text),
             },
         })
     }
@@ -351,16 +351,18 @@ impl ApiClient {
             429 => ApiError::RateLimited,
             code => ApiError::Server {
                 status: code,
-                message: extract_detail(&body),
+                message: extract_detail(code, &body),
             },
         })
     }
 }
 
 /// Бэкенд отдаёт ошибки как `{"detail": "..."}` (FastAPI) — вытаскиваем
-/// человекочитаемое сообщение, если оно есть, иначе отдаём тело как есть.
-fn extract_detail(body: &str) -> String {
-    serde_json::from_str::<serde_json::Value>(body)
+/// человекочитаемое сообщение, если оно есть. Если пришёл не JSON, а, например, HTML-страница ошибки
+/// nginx (`502 Bad Gateway`, пока сервис перезапускается), пользователю её показывать нельзя —
+/// вместо тела отдаём короткое понятное объяснение по коду ответа.
+fn extract_detail(status: u16, body: &str) -> String {
+    let parsed = serde_json::from_str::<serde_json::Value>(body)
         .ok()
         .and_then(|v| {
             let detail = v.get("detail")?;
@@ -371,8 +373,22 @@ fn extract_detail(body: &str) -> String {
                     .and_then(|m| m.as_str())
                     .map(str::to_string)
             })
-        })
-        .unwrap_or_else(|| body.to_string())
+        });
+    if let Some(message) = parsed {
+        return message;
+    }
+    let trimmed = body.trim();
+    let looks_like_page = trimmed.starts_with('<') || trimmed.len() > 300;
+    if trimmed.is_empty() || looks_like_page {
+        return match status {
+            502..=504 => {
+                "сервис временно недоступен (идёт обновление), повторите через минуту".to_string()
+            }
+            500..=599 => "на сервере произошла ошибка, повторите позже".to_string(),
+            _ => "сервер вернул неожиданный ответ".to_string(),
+        };
+    }
+    trimmed.to_string()
 }
 
 #[cfg(test)]
@@ -652,6 +668,20 @@ mod tests {
         let client = ApiClient::new(server.url());
         let err = client.subscription_info("expired").await.unwrap_err();
         assert!(matches!(err, ApiError::Unauthorized));
+    }
+
+    #[test]
+    fn html_error_pages_are_replaced_by_a_readable_message() {
+        let page = "<html> <head><title>502 Bad Gateway</title></head><body>nginx</body></html>";
+        let message = extract_detail(502, page);
+        assert!(!message.contains('<'));
+        assert!(message.contains("временно недоступен"));
+        assert_eq!(
+            extract_detail(500, ""),
+            "на сервере произошла ошибка, повторите позже"
+        );
+        assert_eq!(extract_detail(400, "плохой запрос"), "плохой запрос");
+        assert_eq!(extract_detail(400, r#"{"detail":"nope"}"#), "nope");
     }
 
     #[tokio::test]

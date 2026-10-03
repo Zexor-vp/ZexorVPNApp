@@ -23,14 +23,10 @@ fn is_proxy_protocol(outbound: &Value) -> bool {
 
 impl Profile {
     /// Профиль-балансировщик (панельный «AUTO»): не сервер, а набор серверов с выбором лучшего.
-    /// Признак — наблюдатель за серверами или балансировщик, под селектор которого попадает больше одного
-    /// сервера. У обычного сервера панель тоже кладёт балансировщики (`Main_Balancer`, `MSK_Balancer`),
-    /// но каждый смотрит ровно на один исходящий — это не «AUTO».
+    /// Признак — балансировщик, под селектор которого попадает больше одного сервера. У обычного сервера
+    /// панель тоже кладёт балансировщики (`Main_Balancer`, `MSK_Balancer`) и даже наблюдателя
+    /// (`burstObservatory`), но каждый балансировщик смотрит ровно на один исходящий — это не «AUTO».
     pub fn is_balanced(&self) -> bool {
-        if self.config.get("burstObservatory").is_some() || self.config.get("observatory").is_some()
-        {
-            return true;
-        }
         let Some(balancers) = self
             .config
             .pointer("/routing/balancers")
@@ -202,6 +198,7 @@ pub(crate) mod tests {
             "outbounds": [
                 {"tag": "proxy", "protocol": "vless", "settings": {"vnext": [{"address": "203.0.113.1", "port": 443, "users": [{"id": "00000000-1111-2222-3333-444444444444", "encryption": "none"}]}]}},
                 {"tag": "youtube", "protocol": "vless", "settings": {"vnext": [{"address": "203.0.113.2", "port": 443, "users": [{"id": "00000000-1111-2222-3333-444444444444", "encryption": "none"}]}]}},
+                {"tag": "proxy-2", "protocol": "vless", "settings": {"vnext": [{"address": "203.0.113.3", "port": 443, "users": [{"id": "00000000-1111-2222-3333-444444444444", "encryption": "none"}]}]}},
                 {"tag": "direct", "protocol": "freedom"}, {"tag": "block", "protocol": "blackhole"}
             ],
             "routing": {"balancers": [{"tag": "Super_Balancer", "selector": ["proxy"]}, {"tag": "YouTube_Balancer", "selector": ["youtube"]}],
@@ -220,6 +217,7 @@ pub(crate) mod tests {
                 {"tag": "msk", "protocol": "vless", "settings": {"vnext": [{"address": "203.0.113.6", "port": 443, "users": [user]}]}},
                 {"tag": "direct", "protocol": "freedom"}
             ],
+            "burstObservatory": {"subjectSelector": ["main", "msk"], "pingConfig": {"destination": "http://www.gstatic.com/generate_204", "interval": "1m", "timeout": "3s", "sampling": 1}},
             "routing": {
                 "balancers": [
                     {"tag": "Main_Balancer", "selector": ["main"], "strategy": {"type": "random"}},
@@ -246,12 +244,9 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn balancer_over_several_servers_without_observatory_is_auto() {
+    fn balancer_over_several_servers_is_auto_even_without_observatory() {
         let mut config = auto_profile();
         config.as_object_mut().unwrap().remove("burstObservatory");
-        let second = config["outbounds"][0].clone();
-        config["outbounds"].as_array_mut().unwrap().push(second);
-        config["outbounds"][4]["tag"] = json!("proxy-2");
         assert!(Profile {
             remark: "AUTO".into(),
             config

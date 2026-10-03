@@ -1591,3 +1591,9 @@ h2 {
 .server-list-auto .dropdown-item {
   cursor: default;
 }
+
+/* Кнопка «Обновить» вращается, пока идёт обновление */
+
+.icon-btn-spin svg {
+  animation: spin 0.9s linear infinite;
+}

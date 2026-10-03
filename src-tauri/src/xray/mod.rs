@@ -22,6 +22,9 @@ pub enum ConnectError {
     NoSubscription,
     #[error("не удалось получить содержимое подписки: {0}")]
     FetchSubscription(String),
+    /// Сервер подписки ответил, но отказал или вернул не подписку — текст уже понятен пользователю.
+    #[error("{0}")]
+    SubscriptionRejected(String),
     #[error("не удалось разобрать подписку: {0}")]
     Parse(#[from] zexor_vpn_core::ParseError),
     #[error("узел \"{0}\" не найден в подписке")]
@@ -72,15 +75,38 @@ async fn download_with_headers(
     for (name, value) in headers {
         request = request.header(name, value);
     }
-    request
+    // Текст ошибки reqwest содержит адрес подписки (а в нём — ключ пользователя), поэтому наружу
+    // он не отдаётся: только короткое объяснение.
+    let response = request
         .send()
         .await
-        .map_err(|e| ConnectError::FetchSubscription(e.to_string()))?
-        .error_for_status()
-        .map_err(|e| ConnectError::FetchSubscription(e.to_string()))?
-        .text()
-        .await
-        .map_err(|e| ConnectError::FetchSubscription(e.to_string()))
+        .map_err(|_| ConnectError::FetchSubscription("сервер подписки не отвечает".to_string()))?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(ConnectError::SubscriptionRejected(match status.as_u16() {
+            401 | 403 => {
+                "подписка недоступна: проверьте, что она активна и не превышен лимит устройств"
+                    .to_string()
+            }
+            404 => "подписка не найдена — возможно, она удалена или ссылка изменилась".to_string(),
+            429 => "слишком много запросов, повторите через минуту".to_string(),
+            500..=599 => {
+                "сервис подписки временно недоступен (идёт обновление), повторите через минуту"
+                    .to_string()
+            }
+            code => format!("сервер подписки ответил кодом {code}"),
+        }));
+    }
+    let body = response.text().await.map_err(|_| {
+        ConnectError::FetchSubscription("не удалось прочитать ответ сервера подписки".to_string())
+    })?;
+    // Вместо подписки может прийти HTML-страница (заглушка прокси, ошибка шлюза).
+    if body.trim_start().starts_with('<') {
+        return Err(ConnectError::SubscriptionRejected(
+            "сервис подписки вернул страницу вместо подписки, повторите через минуту".to_string(),
+        ));
+    }
+    Ok(body)
 }
 
 /// Ссылка подписки аккаунта из кабинета.

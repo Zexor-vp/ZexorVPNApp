@@ -11,6 +11,7 @@ export default defineConfig({
     alias: {
       '@tauri-apps/api/core': mock('core'),
       '@tauri-apps/api/app': mock('app'),
+      '@tauri-apps/api/event': mock('event'),
       '@tauri-apps/plugin-updater': mock('updater'),
       '@tauri-apps/plugin-process': mock('process'),
       '@tauri-apps/plugin-dialog': mock('dialog'),

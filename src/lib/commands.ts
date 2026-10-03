@@ -219,6 +219,8 @@ export interface AppSettings {
   routing_apps: string[];
   /** Приложение запущено с правами администратора (нужны для TUN). */
   elevated: boolean;
+  /** Отправка анонимных замеров доступности серверов Zexor. */
+  telemetry: boolean;
 }
 
 export const appSettings = (): Promise<AppSettings> => invoke('app_settings');
@@ -242,3 +244,5 @@ export const removeRoutingApp = (name: string): Promise<AppSettings> =>
 
 /** Запущенные приложения пользователя — для выбора из списка. */
 export const listRunningApps = (): Promise<string[]> => invoke('list_running_apps');
+
+export const setTelemetry = (enabled: boolean): Promise<AppSettings> => invoke('set_telemetry', { enabled });
