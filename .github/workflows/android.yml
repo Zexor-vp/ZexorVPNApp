@@ -23,11 +23,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
-
+      # Образ ubuntu-latest уже содержит Android SDK (ANDROID_HOME), докладываем нужные платформу и NDK.
       - name: Android SDK и NDK
         run: |
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" >/dev/null
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          SDKMANAGER="$(command -v sdkmanager || echo "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager")"
+          yes | "${SDKMANAGER}" --licenses >/dev/null 2>&1 || true
+          "${SDKMANAGER}" --install "platforms;android-35" "build-tools;35.0.0" "ndk;${NDK_VERSION}" 2>&1 | tail -5 | tee android-sdk.log
           echo "NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
 
       - uses: dtolnay/rust-toolchain@stable
@@ -66,7 +68,7 @@ jobs:
         if: always()
         run: |
           mkdir -p /tmp/ci-logs
-          for f in android-init.log android-build.log; do
+          for f in android-sdk.log android-init.log android-build.log; do
             [ -f "$f" ] && tail -n 1200 "$f" > "/tmp/ci-logs/$f" || true
           done
           echo "commit ${GITHUB_SHA}" > /tmp/ci-logs/README.txt
