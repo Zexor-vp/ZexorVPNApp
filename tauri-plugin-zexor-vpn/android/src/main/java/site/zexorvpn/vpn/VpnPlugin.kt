@@ -182,11 +182,25 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
             )
             val density = webView.resources.displayMetrics.density
             fun px(value: Int) = "${value / density}px"
+            // Клавиатура: считаем, насколько она реально перекрывает окно страницы (если WebView и так сжался под
+            // неё, перекрытия нет). Страница по этому поднимает поле ввода и прячет нижнюю панель.
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            val location = IntArray(2)
+            webView.getLocationInWindow(location)
+            val windowHeight = webView.rootView.height
+            val overlap = if (imeVisible) {
+                maxOf(0, location[1] + webView.height - (windowHeight - ime.bottom))
+            } else {
+                0
+            }
             script = "var r=document.documentElement.style;" +
                 "r.setProperty('--sai-top','${px(bars.top)}');" +
                 "r.setProperty('--sai-bottom','${px(bars.bottom)}');" +
                 "r.setProperty('--sai-left','${px(bars.left)}');" +
-                "r.setProperty('--sai-right','${px(bars.right)}');"
+                "r.setProperty('--sai-right','${px(bars.right)}');" +
+                "r.setProperty('--sai-ime','${px(overlap)}');" +
+                "document.documentElement.classList.toggle('kb-open',${overlap > 0});"
             webView.post(push)
             insets
         }

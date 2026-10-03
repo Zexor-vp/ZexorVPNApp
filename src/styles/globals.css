@@ -1760,3 +1760,19 @@ h2 {
     width: min(100%, 640px);
   }
 }
+
+/* Открыта клавиатура (Android): нижняя панель не нужна, поле ввода встаёт прямо над клавиатурой.
+   --sai-ime — на сколько клавиатура перекрывает страницу, его присылает Android-оболочка. */
+.kb-open .bottom-nav {
+  display: none;
+}
+
+@media (max-width: 899.98px) {
+  .kb-open .composer {
+    bottom: calc(var(--sai-ime, 0px) + 0.5rem);
+  }
+
+  .kb-open .page-body:has(> .composer) {
+    padding-bottom: 5rem;
+  }
+}

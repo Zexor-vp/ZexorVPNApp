@@ -49,8 +49,11 @@ export default function App() {
       .then((session) => {
         if (!cancelled) setScreen(session ? { kind: 'app' } : { kind: 'guest' });
       })
-      .catch(() => {
-        if (!cancelled) setScreen({ kind: 'guest' });
+      .catch((err) => {
+        // Нет сети — это не «вышел из аккаунта»: токен сохранён, просто сейчас его не проверить. Остаёмся в приложении
+        // (страницы покажут, что связи нет), иначе без интернета пользователя выбрасывало бы на экран гостя.
+        const offline = (err as { kind?: string } | null)?.kind === 'Network';
+        if (!cancelled) setScreen(offline ? { kind: 'app' } : { kind: 'guest' });
       });
     return () => {
       cancelled = true;
