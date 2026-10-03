@@ -1,0 +1,5 @@
+ключ: из секретов
+Signer #1 certificate DN: CN=Zexor VPN
+Signer #1 certificate SHA-256 digest: 29866c3670cf2493598845bced14ab36d145cb4397705ebe5ad55cff54105fb5
+Signer #1 certificate SHA-1 digest: 672e590cd367b7bbfc7e35eed0463ea08d7089e5
+-rw-r--r-- 1 runner runner 30073902 Oct  3 18:03 Zexor-VPN-0.3.28-android-arm64.apk
