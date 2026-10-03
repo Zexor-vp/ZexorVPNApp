@@ -1802,3 +1802,11 @@ img {
   -webkit-user-drag: none;
   user-drag: none;
 }
+
+/* Нижняя панель приподнята над системными кнопками (--safe-bottom), поэтому и запас под неё внизу страницы
+   должен быть больше — иначе она закрывает последние строки. */
+@media (max-width: 899.98px) {
+  .page {
+    padding-bottom: calc(7rem + var(--safe-bottom));
+  }
+}
