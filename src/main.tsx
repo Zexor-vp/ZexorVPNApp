@@ -6,6 +6,13 @@ import { I18nProvider } from './i18n';
 import './styles/globals.css';
 import { invoke } from '@tauri-apps/api/core';
 
+// Контекстное меню (долгое нажатие / правая кнопка: «копировать», «сохранить картинку») отключено везде, кроме полей ввода.
+window.addEventListener('contextmenu', (event) => {
+  const target = event.target as HTMLElement | null;
+  if (target?.closest('input, textarea, [contenteditable="true"]')) return;
+  event.preventDefault();
+});
+
 // Необработанные ошибки интерфейса уходят на сервер (в админ-панели — «Ошибки приложений»).
 const reportUiError = (message: string) => {
   if (!message || /ResizeObserver loop/i.test(message)) return;

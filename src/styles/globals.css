@@ -1776,3 +1776,25 @@ h2 {
     padding-bottom: 5rem;
   }
 }
+
+/* Интерфейс приложения не выделяется и не копируется долгим нажатием/мышью — как у обычного приложения.
+   Поля ввода исключены: в них надо печатать, выделять и вставлять. Для кода и ссылок есть кнопки «Копировать». */
+html,
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
