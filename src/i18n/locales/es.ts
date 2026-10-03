@@ -213,7 +213,7 @@ const dict: Record<string, string> = {
   "Доступна версия {version}.": "Hay una versión {version} disponible.",
   "Установить и перезапустить": "Instalar y reiniciar",
   "Статистика доступности серверов": "Estadísticas de disponibilidad de servidores",
-  "Раз в полчаса приложение отправляет время отклика серверов Zexor и название вашей сети (оператора) — без IP-адреса и без привязки к аккаунту. Это помогает быстрее находить блокировки.": "Cada media hora la aplicación envía los tiempos de respuesta de los servidores Zexor y el nombre de tu red (operador), sin dirección IP y sin vincularlos a la cuenta. Ayuda a detectar bloqueos más rápido.",
+  "Раз в полчаса приложение отправляет время отклика серверов Zexor и название вашей сети (оператора) — без IP-адреса и без привязки к аккаунту. Это помогает быстрее находить блокировки. Если приложение даёт сбой, оно также отправляет технический отчёт: версию, модель устройства и текст ошибки — тоже без IP-адреса, почты и привязки к аккаунту.": "Cada media hora la aplicación envía los tiempos de respuesta de los servidores Zexor y el nombre de tu red (operador), sin dirección IP y sin vincularlos a la cuenta. Ayuda a detectar bloqueos más rápido. Si la app falla, también envía un informe técnico: versión, modelo del dispositivo y texto del error, igualmente sin dirección IP, correo ni vínculo con la cuenta.",
   "Закрытие окна не отключает VPN — приложение остаётся в трее. Выйти полностью можно из меню значка в трее.": "Cerrar la ventana no desconecta la VPN: la aplicación queda en la bandeja. Para salir del todo usa el menú del icono de la bandeja.",
   "Выйти из аккаунта": "Cerrar sesión",
   "Почта": "Correo",
