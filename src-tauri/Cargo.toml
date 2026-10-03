@@ -1,6 +1,6 @@
 [package]
 name = "zexor-vpn-desktop"
-version = "0.3.9"
+version = "0.3.10"
 description = "Zexor VPN desktop client for Windows"
 edition = "2021"
 rust-version = "1.77"
@@ -28,6 +28,7 @@ thiserror = "2"
 # Только для запроса содержимого подписки (sub.zexorvpn.site) — сам API-клиент
 # кабинета живёт в zexor-vpn-core.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+base64 = "0.22"
 # Криптостойкий state для входа через браузер.
 getrandom = "0.2"
 tokio = { version = "1", features = ["time"] }

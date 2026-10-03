@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import Button from '../components/Button';
 import PageShell from '../components/PageShell';
@@ -18,10 +18,14 @@ import {
   getTickets,
   htmlToText,
   replyTicket,
+  ticketPhotoUrl,
+  uploadSupportPhoto,
   type TicketDetail,
   type TicketSummary,
 } from '../lib/cabinet';
 import { connectionStatus, errorMessage, openExternal } from '../lib/commands';
+import { preparePhoto, type PreparedPhoto } from '../lib/image';
+import { isMobile } from '../lib/platform';
 
 const THREAD_POLL_MS = 5_000;
 
@@ -49,7 +53,7 @@ async function collectDiagnostics(): Promise<string> {
   ]);
   const s = sub?.subscription;
   return [
-    'Данные приложения Zexor VPN для Windows:',
+    `Данные приложения Zexor VPN для ${isMobile ? 'Android' : 'Windows'}:`,
     `Версия: ${version ?? 'неизвестно'}`,
     `Система: ${navigator.userAgent}`,
     `Подключение: ${status?.connected ? `да, ${status.node_remark ?? '?'}` : 'нет'}`,
@@ -200,6 +204,54 @@ function TicketList({ onNew, onOpen }: { onNew: () => void; onOpen: (id: number)
   );
 }
 
+/** Выбор фото для сообщения: превью, кнопка «убрать» и сама загрузка при отправке. */
+function usePhotoAttachment() {
+  const t = useT();
+  const [photo, setPhoto] = useState<PreparedPhoto | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function pick(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setError(null);
+    try {
+      setPhoto(await preparePhoto(file));
+    } catch (err) {
+      setError(t(errorMessage(err)));
+    }
+  }
+
+  /** `file_id` загруженного фото или `null`, если ничего не приложено. */
+  async function upload(): Promise<string | null> {
+    return photo ? uploadSupportPhoto(photo.mime, photo.base64) : null;
+  }
+
+  return { photo, error, pick, clear: () => setPhoto(null), upload };
+}
+
+function PhotoButton({ onPick, disabled }: { onPick: (event: ChangeEvent<HTMLInputElement>) => void; disabled?: boolean }) {
+  const t = useT();
+  return (
+    <label className={`icon-btn photo-btn${disabled ? ' is-disabled' : ''}`} title={t('Прикрепить фото')} aria-label={t('Прикрепить фото')}>
+      <input type="file" accept="image/*" onChange={onPick} disabled={disabled} hidden />
+      <span aria-hidden>📎</span>
+    </label>
+  );
+}
+
+function PhotoPreview({ photo, onClear }: { photo: PreparedPhoto; onClear: () => void }) {
+  const t = useT();
+  return (
+    <div className="photo-preview">
+      <img src={photo.previewUrl} alt="" />
+      <button type="button" className="link-btn" onClick={onClear}>
+        {t('Убрать фото')}
+      </button>
+    </div>
+  );
+}
+
 function NewTicket({ onCancel, onCreated }: { onCancel: () => void; onCreated: (id: number) => void }) {
   const t = useT();
   const [title, setTitle] = useState('');
@@ -207,6 +259,7 @@ function NewTicket({ onCancel, onCreated }: { onCancel: () => void; onCreated: (
   const [withDiagnostics, setWithDiagnostics] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const attachment = usePhotoAttachment();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -215,7 +268,7 @@ function NewTicket({ onCancel, onCreated }: { onCancel: () => void; onCreated: (
     try {
       let text = message.trim();
       if (withDiagnostics) text = `${text}\n\n— — —\n${await collectDiagnostics()}`;
-      const created = await createTicket(title.trim(), text.slice(0, 4000));
+      const created = await createTicket(title.trim(), text.slice(0, 4000), await attachment.upload());
       onCreated(created.id);
     } catch (err) {
       if (!reportAuthLoss(err)) setError(errorMessage(err));
@@ -244,8 +297,10 @@ function NewTicket({ onCancel, onCreated }: { onCancel: () => void; onCreated: (
           <input type="checkbox" checked={withDiagnostics} onChange={(e) => setWithDiagnostics(e.target.checked)} />
           <span>{t('Приложить данные приложения (версия, подключение, подписка) — без паролей и ключей')}</span>
         </label>
-        {error && <p className="form-error">{error}</p>}
+        {attachment.photo && <PhotoPreview photo={attachment.photo} onClear={attachment.clear} />}
+        {(error ?? attachment.error) && <p className="form-error">{error ?? attachment.error}</p>}
         <div className="modal-actions">
+          <PhotoButton onPick={attachment.pick} disabled={sending} />
           <Button type="button" variant="ghost" onClick={onCancel}>
             {t('Отмена')}
           </Button>
@@ -265,7 +320,12 @@ function Thread({ id, onBack }: { id: number; onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
+  const attachment = usePhotoAttachment();
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Лента листается как в мессенджерах: к новому сообщению едем, только если пользователь и так внизу.
+  const stickToBottom = useRef(true);
+  const firstScroll = useRef(true);
+  const forceScroll = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -301,16 +361,42 @@ function Thread({ id, onBack }: { id: number; onBack: () => void }) {
   );
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: 'end' });
-  }, [ticket?.messages.length]);
+    const page = document.querySelector<HTMLElement>('.page');
+    if (!page) return;
+    const onScroll = () => {
+      stickToBottom.current = page.scrollHeight - page.scrollTop - page.clientHeight < 160;
+    };
+    page.addEventListener('scroll', onScroll, { passive: true });
+    return () => page.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToBottom = useCallback((smooth: boolean) => {
+    const page = document.querySelector<HTMLElement>('.page');
+    page?.scrollTo({ top: page.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  }, []);
+
+  const messageCount = ticket?.messages.length ?? 0;
+  useEffect(() => {
+    if (messageCount === 0) return;
+    if (firstScroll.current) {
+      firstScroll.current = false;
+      scrollToBottom(false);
+    } else if (forceScroll.current || stickToBottom.current) {
+      forceScroll.current = false;
+      scrollToBottom(true);
+    }
+  }, [messageCount, scrollToBottom]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!reply.trim()) return;
+    if (!reply.trim() && !attachment.photo) return;
     setSending(true);
     try {
-      await replyTicket(id, reply.trim());
+      const photoId = await attachment.upload();
+      await replyTicket(id, reply.trim(), photoId);
       setReply('');
+      attachment.clear();
+      forceScroll.current = true;
       await load();
       refresh();
     } catch (err) {
@@ -353,7 +439,18 @@ function Thread({ id, onBack }: { id: number; onBack: () => void }) {
               <div key={message.id} className={`bubble ${message.is_from_admin ? 'bubble-admin' : 'bubble-user'}`}>
                 <span className="bubble-author">{message.is_from_admin ? t('Поддержка') : t('Вы')}</span>
                 <p>{message.message_text}</p>
-                {message.has_media && <span className="muted">{t('К сообщению приложен файл — он виден в боте и кабинете.')}</span>}
+                {ticketPhotoUrl(message) ? (
+                  <img
+                    className="bubble-photo"
+                    src={ticketPhotoUrl(message) ?? ''}
+                    alt=""
+                    loading="lazy"
+                    onLoad={() => stickToBottom.current && scrollToBottom(false)}
+                    onClick={() => void openExternal(ticketPhotoUrl(message) ?? '').catch(() => undefined)}
+                  />
+                ) : (
+                  message.has_media && <span className="muted">{t('К сообщению приложен файл — он виден в боте и кабинете.')}</span>
+                )}
                 <span className="bubble-time">{formatWhen(message.created_at)}</span>
               </div>
             ))}
@@ -363,11 +460,23 @@ function Thread({ id, onBack }: { id: number; onBack: () => void }) {
       </section>
 
       {ticket && !closed && !ticket.is_reply_blocked && (
-        <form className="card" onSubmit={submit} style={{ gap: '0.6rem' }}>
-          <textarea className="text-input text-area" rows={3} placeholder={t('Ваш ответ')} value={reply} maxLength={3900} onChange={(e) => setReply(e.target.value)} />
-          <Button type="submit" loading={sending} disabled={!reply.trim()}>
-            {t('Отправить')}
-          </Button>
+        <form className="card composer" onSubmit={submit}>
+          {attachment.photo && <PhotoPreview photo={attachment.photo} onClear={attachment.clear} />}
+          {attachment.error && <p className="form-error">{attachment.error}</p>}
+          <div className="composer-row">
+            <PhotoButton onPick={attachment.pick} disabled={sending} />
+            <textarea
+              className="text-input text-area"
+              rows={1}
+              placeholder={t('Ваш ответ')}
+              value={reply}
+              maxLength={3900}
+              onChange={(e) => setReply(e.target.value)}
+            />
+            <Button type="submit" loading={sending} disabled={!reply.trim() && !attachment.photo}>
+              {t('Отправить')}
+            </Button>
+          </div>
         </form>
       )}
       {ticket && (closed || ticket.is_reply_blocked) && (

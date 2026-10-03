@@ -1,8 +1,10 @@
 // Типизированные обёртки над Cabinet API — тем же бэкендом, что обслуживает веб-кабинет.
 // Поля описаны не все, а только те, что показывает приложение.
+import { invoke } from '@tauri-apps/api/core';
 import { cabinetRequest } from './commands';
 
 const API = '/api/cabinet';
+const MEDIA_BASE = 'https://cabinet.zexorvpn.site';
 
 export interface SubscriptionData {
   id: number;
@@ -188,6 +190,10 @@ export interface TicketMessage {
   message_text: string;
   is_from_admin: boolean;
   has_media: boolean;
+  media_type?: string | null;
+  media_file_id?: string | null;
+  /** Подписанный токен для скачивания; ссылка на фото живёт ограниченное время. */
+  media_token?: string | null;
   created_at: string;
 }
 
@@ -215,11 +221,26 @@ export const getTickets = (): Promise<{ items: TicketSummary[]; total: number }>
 
 export const getTicket = (id: number): Promise<TicketDetail> => cabinetRequest('GET', `${API}/tickets/${id}`);
 
-export const createTicket = (title: string, message: string): Promise<TicketDetail> =>
-  cabinetRequest('POST', `${API}/tickets`, { title, message });
+const mediaFields = (fileId?: string | null) =>
+  fileId ? { media_type: 'photo', media_file_id: fileId } : {};
 
-export const replyTicket = (id: number, message: string): Promise<TicketMessage> =>
-  cabinetRequest('POST', `${API}/tickets/${id}/messages`, { message });
+export const createTicket = (title: string, message: string, photoFileId?: string | null): Promise<TicketDetail> =>
+  cabinetRequest('POST', `${API}/tickets`, { title, message, ...mediaFields(photoFileId) });
+
+export const replyTicket = (id: number, message: string, photoFileId?: string | null): Promise<TicketMessage> =>
+  cabinetRequest('POST', `${API}/tickets/${id}/messages`, { message, ...mediaFields(photoFileId) });
+
+/** Загружает подготовленное фото и возвращает `file_id` для сообщения. */
+export const uploadSupportPhoto = async (mime: string, dataBase64: string): Promise<string> => {
+  const uploaded = await invoke<{ file_id: string }>('upload_support_photo', { mime, dataBase64 });
+  return uploaded.file_id;
+};
+
+/** Адрес фото из сообщения (токен в ссылке подписан бэкендом, авторизация не нужна). */
+export const ticketPhotoUrl = (message: TicketMessage): string | null =>
+  message.has_media && message.media_type === 'photo' && message.media_file_id && message.media_token
+    ? `${MEDIA_BASE}/api/cabinet/media/${encodeURIComponent(message.media_file_id)}?token=${encodeURIComponent(message.media_token)}`
+    : null;
 
 export const TICKET_STATUS_LABEL: Record<string, string> = {
   open: 'Открыто', // i18n-key

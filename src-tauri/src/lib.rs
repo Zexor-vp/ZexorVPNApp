@@ -141,6 +141,7 @@ pub fn run() {
             settings::set_native_labels,
             apk_update::check_apk_update,
             cabinet::cabinet_request,
+            cabinet::upload_support_photo,
             cabinet::open_external,
             cabinet::open_payment_url,
             adblock::commands::adblock_settings,

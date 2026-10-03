@@ -269,6 +269,59 @@ impl ApiClient {
         })
     }
 
+    /// Загружает фото для сообщения в поддержку (`POST /api/cabinet/media/upload`, multipart).
+    /// Тело формы собирается вручную: готовой multipart-обёртки в зависимостях нет, а поля всего два.
+    pub async fn upload_photo(
+        &self,
+        access_token: &str,
+        mime: &str,
+        bytes: Vec<u8>,
+    ) -> Result<serde_json::Value, ApiError> {
+        let boundary = "----ZexorUpload7d41b2c9a8";
+        let extension = match mime {
+            "image/png" => "png",
+            "image/webp" => "webp",
+            "image/gif" => "gif",
+            _ => "jpg",
+        };
+        let mut body: Vec<u8> = Vec::with_capacity(bytes.len() + 512);
+        body.extend_from_slice(
+            format!(
+                "--{boundary}\r\nContent-Disposition: form-data; name=\"media_type\"\r\n\r\nphoto\r\n\
+                 --{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"photo.{extension}\"\r\n\
+                 Content-Type: {mime}\r\n\r\n"
+            )
+            .as_bytes(),
+        );
+        body.extend_from_slice(&bytes);
+        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+
+        let response = self
+            .http
+            .post(self.url("/api/cabinet/media/upload"))
+            .bearer_auth(access_token)
+            .header(
+                reqwest::header::CONTENT_TYPE,
+                format!("multipart/form-data; boundary={boundary}"),
+            )
+            .body(body)
+            .send()
+            .await?;
+        let status = response.status();
+        let text = response.text().await?;
+        if status.is_success() {
+            return serde_json::from_str(&text).map_err(|e| ApiError::Decode(e.to_string()));
+        }
+        Err(match status.as_u16() {
+            401 => ApiError::Unauthorized,
+            429 => ApiError::RateLimited,
+            code => ApiError::Server {
+                status: code,
+                message: extract_detail(code, &text),
+            },
+        })
+    }
+
     /// Запрашивает одноразовый токен для входа через Telegram-бота.
     pub async fn deeplink_request(&self) -> Result<DeepLinkToken, ApiError> {
         let response = self
