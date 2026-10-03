@@ -47,10 +47,10 @@ jobs:
         run: npm ci
 
       - name: Каркас Android-проекта
-        run: npx tauri android init --ci
+        run: npx tauri android init --ci 2>&1 | tee android-init.log
 
       - name: Сборка APK
-        run: npx tauri android build --apk --debug --target aarch64
+        run: npx tauri android build --apk --debug --target aarch64 2>&1 | tee android-build.log
 
       - name: Найденные APK
         run: find src-tauri/gen/android -name '*.apk' -print
@@ -60,3 +60,21 @@ jobs:
           name: zexor-vpn-android
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
+
+      # Журналы сборки читать из интерфейса GitHub без входа нельзя, поэтому хвост журнала кладём в ветку ci-logs.
+      - name: Журнал сборки в ветку ci-logs
+        if: always()
+        run: |
+          mkdir -p /tmp/ci-logs
+          for f in android-init.log android-build.log; do
+            [ -f "$f" ] && tail -n 1200 "$f" > "/tmp/ci-logs/$f" || true
+          done
+          echo "commit ${GITHUB_SHA}" > /tmp/ci-logs/README.txt
+          cd /tmp/ci-logs
+          git init -q
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git checkout -q -b ci-logs
+          git add .
+          git commit -q -m "android build log for ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-logs
