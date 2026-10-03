@@ -110,7 +110,7 @@ jobs:
           echo "unsigned: ${UNSIGNED}"
           if [ -n "${KS_B64}" ]; then
             echo "${KS_B64}" | base64 -d > /tmp/zexor.jks
-            PASS="${KS_PASS}"; ALIAS="${KS_ALIAS:-zexor}"
+            PASS="${KS_PASS}"; ALIAS="${KS_ALIAS:-zexor}"; KS_TYPE="pkcs12"
             echo "ключ: из секретов" | tee android-sign.log
           else
             # Постоянный ключ без ручных секретов: файл ключа лежит в отдельной ветке android-keystore этого

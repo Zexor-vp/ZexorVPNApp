@@ -24,3 +24,6 @@ tauri-signing-key*
 .DS_Store
 Thumbs.db
 tools/demo/
+
+# Ключ подписи Android: только локально, в репозиторий не попадает
+.android-secrets/
