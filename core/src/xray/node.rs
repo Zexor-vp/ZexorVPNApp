@@ -50,6 +50,35 @@ impl Node {
 
 /// Разбирает тело подписки в список узлов обоих поддерживаемых протоколов.
 /// Неподдерживаемые схемы и битые строки молча пропускаются.
+/// Панель при проблемах с подпиской отдаёт вместо серверов «заглушки»: узлы, имя которых — текст сообщения
+/// (лимит устройств, подписка закончилась, нет серверов...). Возвращает понятное объяснение, если весь
+/// список состоит из таких заглушек.
+pub fn placeholder_reason(nodes: &[Node]) -> Option<&'static str> {
+    if nodes.is_empty() || nodes.len() > 8 {
+        return None;
+    }
+    let text = nodes
+        .iter()
+        .map(|n| n.remark().to_lowercase())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let has = |needle: &str| text.contains(needle);
+    if has("лимит устройств") || has("сбросом устройств") || has("device limit")
+    {
+        Some("превышен лимит устройств — удалите ненужное устройство в кабинете или в боте (сброс устройств)")
+    } else if has("подписка отключена") {
+        Some("подписка отключена — напишите в поддержку")
+    } else if has("подписка") && has("закончилась") {
+        Some("подписка закончилась — продлите её в кабинете или в боте")
+    } else if has("лимит трафика") {
+        Some("достигнут лимит трафика — продлите подписку или дождитесь сброса")
+    } else if has("код ошибки") || (has("напишите") && has("поддержку")) {
+        Some("в подписке нет доступных серверов — напишите в поддержку")
+    } else {
+        None
+    }
+}
+
 pub fn parse_nodes(body: &str) -> Result<Vec<Node>, ParseError> {
     // Формат Happ: JSON-массив готовых профилей xray.
     if let Some(profiles) = parse_profiles(body)? {
@@ -85,6 +114,38 @@ mod tests {
 
     const VLESS: &str = "vless://00000000-1111-2222-3333-444444444444@203.0.113.10:443?type=tcp&security=reality&pbk=EXAMPLEPublicKeyForTestsOnly0000000000000000&fp=chrome&sni=example.com&sid=0123456789abcdef&flow=xtls-rprx-vision#Czech";
     const WG: &str = "wireguard://AAAA%2BBBBB%3D@203.0.113.5:51820?publickey=ZZZZ%3D&address=10.66.66.2%2F32#Germany";
+
+    fn fake(remarks: &[&str]) -> Vec<Node> {
+        let body = remarks
+            .iter()
+            .map(|r| format!("vless://00000000-1111-2222-3333-444444444444@0.0.0.0:1?type=tcp&security=none#{}", r.replace(' ', "%20")))
+            .collect::<Vec<_>>()
+            .join("\n");
+        parse_nodes(&body).unwrap()
+    }
+
+    #[test]
+    fn placeholder_lists_are_recognised() {
+        let limit = fake(&[
+            "ЛИМИТ УСТРОЙСТВ",
+            "ПРЕВЫШЕН",
+            "Воспользуйтесь ",
+            "Сбросом устройств ",
+        ]);
+        assert!(placeholder_reason(&limit)
+            .unwrap()
+            .starts_with("превышен лимит устройств"));
+        let empty = fake(&["Напишите ", "В поддержку ", "Код ошибки:", "12"]);
+        assert!(placeholder_reason(&empty)
+            .unwrap()
+            .contains("нет доступных серверов"));
+        let expired = fake(&["⌛ ПОДПИСКА", "ЗАКОНЧИЛАСЬ"]);
+        assert!(placeholder_reason(&expired)
+            .unwrap()
+            .contains("закончилась"));
+        let real = parse_nodes(VLESS).unwrap();
+        assert!(placeholder_reason(&real).is_none());
+    }
 
     #[test]
     fn plain_wireguard_list_is_parsed() {

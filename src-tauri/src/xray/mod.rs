@@ -147,7 +147,11 @@ pub async fn fetch_nodes(
             download_subscription(&url).await?
         }
     };
-    Ok(zexor_vpn_core::parse_nodes(&body)?)
+    let nodes = zexor_vpn_core::parse_nodes(&body)?;
+    if let Some(reason) = zexor_vpn_core::placeholder_reason(&nodes) {
+        return Err(ConnectError::SubscriptionRejected(reason.to_string()));
+    }
+    Ok(nodes)
 }
 
 /// Путь к бандленному sidecar-бинарнику xray.

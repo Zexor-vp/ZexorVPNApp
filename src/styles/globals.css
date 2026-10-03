@@ -1648,11 +1648,17 @@ h2 {
   font-weight: 600;
 }
 
-/* Телефон: вырезы и системные панели не должны перекрывать шапку и нижнюю панель */
+/* Телефон: вырезы и системные панели не должны перекрывать шапку и нижнюю панель.
+   --sai-* задаёт Android-оболочка (WebView не всегда отдаёт env(safe-area-inset-*)). */
+:root {
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--sai-top, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--sai-bottom, 0px));
+}
+
 .topbar {
-  padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+  padding-top: calc(1rem + var(--safe-top));
 }
 
 .bottom-nav {
-  margin-bottom: env(safe-area-inset-bottom, 0px);
+  margin-bottom: var(--safe-bottom);
 }

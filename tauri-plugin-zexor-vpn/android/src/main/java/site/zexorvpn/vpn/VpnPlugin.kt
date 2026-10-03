@@ -4,6 +4,8 @@ import android.app.Activity
 import android.net.VpnService
 import android.webkit.WebView
 import androidx.activity.result.ActivityResult
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
 import app.tauri.annotation.TauriPlugin
@@ -18,6 +20,7 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
 
     /** geoip.dat / geosite.dat лежат в ресурсах APK; xray читает их с диска, поэтому копируем в папку приложения. */
     override fun load(webView: WebView) {
+        passInsetsToPage(webView)
         try {
             val dir = File(activity.filesDir, "geo").apply { mkdirs() }
             for (name in listOf("geoip.dat", "geosite.dat")) {
@@ -32,6 +35,34 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
         } catch (_: Exception) {
             // Без баз geosite/geoip часть правил не заработает, но VPN поднимется.
         }
+    }
+
+    /**
+     * Приложение рисуется под системными панелями (edge-to-edge), а WebView не всегда сообщает странице их размер
+     * через env(safe-area-inset-*). Передаём отступы сами — в CSS-переменных --sai-top/-bottom/-left/-right (в px).
+     */
+    private fun passInsetsToPage(webView: WebView) {
+        var script = ""
+        val push = { webView.evaluateJavascript(script, null) }
+        ViewCompat.setOnApplyWindowInsetsListener(webView) { _, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+            )
+            val density = webView.resources.displayMetrics.density
+            fun px(value: Int) = "${value / density}px"
+            script = "var r=document.documentElement.style;" +
+                "r.setProperty('--sai-top','${px(bars.top)}');" +
+                "r.setProperty('--sai-bottom','${px(bars.bottom)}');" +
+                "r.setProperty('--sai-left','${px(bars.left)}');" +
+                "r.setProperty('--sai-right','${px(bars.right)}');"
+            webView.post(push)
+            insets
+        }
+        // Страница может загрузиться позже первого события — повторяем несколько секунд.
+        for (delay in listOf(500L, 1500L, 3000L, 6000L)) {
+            webView.postDelayed({ if (script.isNotEmpty()) push() }, delay)
+        }
+        ViewCompat.requestApplyInsets(webView)
     }
 
     @Command

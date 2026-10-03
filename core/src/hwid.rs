@@ -60,15 +60,21 @@ fn new_uuid_v4() -> String {
 /// Заголовки, которыми приложение представляется панели при скачивании подписки: `Happ/…` в User-Agent
 /// даёт формат с готовыми профилями, остальное регистрирует устройство в списке пользователя.
 pub fn subscription_headers(hwid: &str) -> Vec<(&'static str, String)> {
+    // Панель показывает пользователю в списке устройств именно эти значения.
+    let (agent, device_os, model) = if cfg!(target_os = "android") {
+        ("Android", "Android", "Zexor VPN Android")
+    } else {
+        ("Desktop", "Windows", "Zexor VPN Desktop")
+    };
     vec![
         (
             "User-Agent",
-            format!("Happ/2.0.0 ZexorVPN-Desktop/{}", env!("CARGO_PKG_VERSION")),
+            format!("Happ/2.0.0 ZexorVPN-{agent}/{}", env!("CARGO_PKG_VERSION")),
         ),
         ("x-hwid", hwid.to_string()),
-        ("x-device-os", "Windows".to_string()),
+        ("x-device-os", device_os.to_string()),
         ("x-ver-os", std::env::consts::OS.to_string()),
-        ("x-device-model", "Zexor VPN Desktop".to_string()),
+        ("x-device-model", model.to_string()),
     ]
 }
 

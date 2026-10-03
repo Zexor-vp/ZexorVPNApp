@@ -24,7 +24,7 @@ pub use api::{
 };
 pub use auth::{jwt_expiry, TokenAction, TokenSet};
 pub use xray::config_builder::{build_config, build_node_config, ConfigOptions, TunnelMode};
-pub use xray::node::{parse_nodes, Node};
+pub use xray::node::{parse_nodes, placeholder_reason, Node};
 pub use xray::parser::{parse_subscription, parse_vless_uri, ParseError, Security, VlessNode};
 pub use xray::process::{XrayError, XrayProcess};
 pub use xray::profile::Profile;
