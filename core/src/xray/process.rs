@@ -43,6 +43,19 @@ impl XrayProcess {
         config: &serde_json::Value,
         config_path: &Path,
     ) -> Result<Self, XrayError> {
+        Self::start_with(binary, config, config_path, &[], None)
+    }
+
+    /// То же, что [`start`](Self::start), но с дополнительными переменными окружения и (только Unix) одним
+    /// унаследованным файловым дескриптором — на Android так передаётся дескриптор TUN-интерфейса
+    /// (`XRAY_TUN_FD`): `VpnService` отдаёт его приложению, а xray сам читает и пишет в него пакеты.
+    pub fn start_with(
+        binary: &Path,
+        config: &serde_json::Value,
+        config_path: &Path,
+        envs: &[(String, String)],
+        inherit_fd: Option<i32>,
+    ) -> Result<Self, XrayError> {
         if !binary.exists() {
             return Err(XrayError::BinaryNotFound(binary.to_path_buf()));
         }
@@ -76,12 +89,33 @@ impl XrayProcess {
             .stdout(log_out)
             .stderr(log_err);
 
+        for (name, value) in envs {
+            command.env(name, value);
+        }
+
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
             command.creation_flags(CREATE_NO_WINDOW);
         }
+
+        // Дескриптор по умолчанию закрывается при запуске дочернего процесса (CLOEXEC) — снимаем флаг.
+        #[cfg(unix)]
+        if let Some(fd) = inherit_fd {
+            use std::os::unix::process::CommandExt;
+            // SAFETY: в `pre_exec` вызывается только `fcntl` — функция, безопасная между fork и exec.
+            unsafe {
+                command.pre_exec(move || {
+                    if libc::fcntl(fd, libc::F_SETFD, 0) == -1 {
+                        return Err(std::io::Error::last_os_error());
+                    }
+                    Ok(())
+                });
+            }
+        }
+        #[cfg(not(unix))]
+        let _ = inherit_fd;
 
         let child = command
             .spawn()

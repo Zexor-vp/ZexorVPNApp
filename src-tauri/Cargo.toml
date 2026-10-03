@@ -48,6 +48,7 @@ keyring = { version = "3", features = ["windows-native"] }
 [target.'cfg(target_os = "android")'.dependencies]
 tauri-plugin-opener = "2"
 tauri-plugin-zexor-vpn = { path = "../tauri-plugin-zexor-vpn" }
+libc = "0.2"
 
 [dev-dependencies]
 pretty_assertions = "1"

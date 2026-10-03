@@ -6256,6 +6256,7 @@ version = "0.3.5"
 dependencies = [
  "base64 0.22.1",
  "getrandom 0.2.17",
+ "libc",
  "mockito",
  "percent-encoding",
  "pretty_assertions",
@@ -6276,6 +6277,7 @@ version = "0.3.5"
 dependencies = [
  "getrandom 0.2.17",
  "keyring",
+ "libc",
  "pretty_assertions",
  "reqwest 0.12.28",
  "serde",

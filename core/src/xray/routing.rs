@@ -94,7 +94,7 @@ pub fn user_rules(opts: &ConfigOptions, default_target: &Value) -> (Vec<Value>, 
     let mut rules = Vec::new();
 
     // В TUN-режиме весь IPv6 режем: туннель его не несёт, а без блокировки приложения «зависали» бы на AAAA.
-    if opts.mode == TunnelMode::Tun {
+    if opts.mode == TunnelMode::Tun || opts.android_tun {
         rules.push(json!({ "type": "field", "ip": ["::/0"], "outboundTag": "block" }));
     }
 
@@ -356,6 +356,31 @@ mod tests {
         assert_eq!(rules[0]["process"][0], "chrome.exe");
         assert_eq!(rules[0]["outboundTag"], "proxy");
         assert_eq!(rules[1]["outboundTag"], "direct");
+    }
+
+    #[test]
+    fn android_tun_uses_the_fd_from_vpnservice_and_touches_no_routes() {
+        let profile = Profile {
+            remark: "x".into(),
+            config: vless_profile("x", "203.0.113.10"),
+        };
+        let cfg = profile_config(
+            &profile,
+            &ConfigOptions {
+                android_tun: true,
+                ..ConfigOptions::default()
+            },
+        );
+        let tun = cfg["inbounds"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["protocol"] == "tun")
+            .expect("tun inbound");
+        assert_eq!(tun["settings"]["name"], "tun0");
+        assert!(tun["settings"].get("autoSystemRoutingTable").is_none());
+        assert!(tun["settings"].get("autoOutboundsInterface").is_none());
+        assert_eq!(cfg["routing"]["rules"][0]["outboundTag"], "block"); // IPv6 в туннеле режем
     }
 
     #[test]

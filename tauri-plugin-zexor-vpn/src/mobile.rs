@@ -50,7 +50,10 @@ impl<R: Runtime> Vpn<R> {
 
     /// Поднимает TUN-интерфейс и возвращает его дескриптор.
     pub async fn establish(&self) -> Result<Established, VpnError> {
-        Ok(self.0.run_mobile_plugin_async("establish", json!({})).await?)
+        Ok(self
+            .0
+            .run_mobile_plugin_async("establish", json!({}))
+            .await?)
     }
 
     pub async fn info(&self) -> Result<Info, VpnError> {

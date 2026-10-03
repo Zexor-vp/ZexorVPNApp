@@ -42,6 +42,9 @@ pub struct ConfigOptions {
     pub vpn_only_processes: Option<Vec<String>>,
     /// Российские сайты (.ru, .su, .рф) напрямую — для собственного балансировщика, как в панельном «AUTO».
     pub bypass_ru: bool,
+    /// Android: TUN-интерфейс создал `VpnService`, а его дескриптор передан xray через `XRAY_TUN_FD`.
+    /// Маршруты и интерфейс xray не настраивает — только читает пакеты.
+    pub android_tun: bool,
 }
 
 impl Default for ConfigOptions {
@@ -58,6 +61,7 @@ impl Default for ConfigOptions {
             direct_processes: Vec::new(),
             vpn_only_processes: None,
             bypass_ru: true,
+            android_tun: false,
         }
     }
 }
@@ -143,7 +147,18 @@ pub(super) fn build_inbounds(opts: &ConfigOptions) -> Value {
             "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
         }
     ]);
-    if opts.mode == TunnelMode::Tun {
+    if opts.android_tun {
+        inbounds
+            .as_array_mut()
+            .expect("массив inbound'ов")
+            .push(json!({
+                "tag": "tun-in",
+                "port": 0,
+                "protocol": "tun",
+                "settings": { "name": "tun0", "mtu": 1500 },
+                "sniffing": { "enabled": true, "destOverride": ["http", "tls", "quic"] }
+            }));
+    } else if opts.mode == TunnelMode::Tun {
         // xray сам создаёт адаптер (wintun), назначает ему адрес и DNS, прописывает маршруты и привязывает
         // собственные исходящие к физическому интерфейсу — поэтому петли «туннель через туннель» нет.
         inbounds

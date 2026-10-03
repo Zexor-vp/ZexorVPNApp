@@ -1,6 +1,8 @@
 //! Оркестрация подключения: получить подписку → распарсить узлы → собрать
 //! конфиг → поднять процесс → включить системный прокси.
 
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod commands;
 
 use std::path::PathBuf;
@@ -45,6 +47,10 @@ pub enum ConnectError {
     NothingToBalance,
     #[error("ни один сервер не ответил — возможно, их блокирует провайдер")]
     NoWorkingServer,
+    #[error("разрешение на VPN не выдано — без него подключиться нельзя")]
+    VpnPermissionDenied,
+    #[error("не удалось создать VPN-подключение: {0}")]
+    VpnSetup(String),
 }
 
 /// Скачивает тело подписки по ссылке. Свой User-Agent нужен, чтобы панель отдала
@@ -149,6 +155,20 @@ pub async fn fetch_nodes(
 /// Tauri кладёт `externalBin` рядом с исполняемым файлом приложения под именем без target triple
 /// (`xray.exe`); остальные варианты — для запуска из исходников и на случай другой раскладки.
 pub fn resolve_xray_binary(app: &AppHandle) -> Result<PathBuf, ConnectError> {
+    #[cfg(target_os = "android")]
+    {
+        let _ = app;
+        return android::xray_binary()
+            .filter(|path| path.is_file())
+            .ok_or_else(|| ConnectError::BinaryMissing("libxray.so".to_string()));
+    }
+
+    #[cfg(not(target_os = "android"))]
+    resolve_xray_binary_desktop(app)
+}
+
+#[cfg(not(target_os = "android"))]
+fn resolve_xray_binary_desktop(app: &AppHandle) -> Result<PathBuf, ConnectError> {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
@@ -181,6 +201,18 @@ pub fn resolve_xray_binary(app: &AppHandle) -> Result<PathBuf, ConnectError> {
 /// Папка с geosite.dat/geoip.dat — xray берёт её из `XRAY_LOCATION_ASSET`. Задаётся один раз при запуске
 /// приложения, дочерние процессы (в том числе пробные xray для проверки серверов) наследуют.
 pub fn export_geo_assets_dir(app: &AppHandle) {
+    // На Android базы лежат в папке приложения — их путь задаёт `android::init_paths`.
+    #[cfg(target_os = "android")]
+    {
+        let _ = app;
+        return;
+    }
+    #[cfg(not(target_os = "android"))]
+    export_geo_assets_dir_desktop(app);
+}
+
+#[cfg(not(target_os = "android"))]
+fn export_geo_assets_dir_desktop(app: &AppHandle) {
     let Ok(resource_dir) = app.path().resource_dir() else {
         return;
     };
@@ -192,6 +224,7 @@ pub fn export_geo_assets_dir(app: &AppHandle) {
 
 /// Режиму TUN xray нужен `wintun.dll` рядом с собой (драйвер адаптера). В установщике он лежит среди
 /// ресурсов; перед запуском кладём копию к `xray.exe`.
+#[cfg(not(target_os = "android"))]
 fn ensure_wintun(app: &AppHandle, xray_binary: &std::path::Path) -> Result<(), ConnectError> {
     let Some(target_dir) = xray_binary.parent() else {
         return Ok(());
@@ -216,6 +249,20 @@ fn ensure_wintun(app: &AppHandle, xray_binary: &std::path::Path) -> Result<(), C
 /// Читает бандленный дефолтный блок-лист рекламы. Отсутствие файла не
 /// считается ошибкой — просто подключаемся без адблока.
 pub fn load_bundled_blocklist(app: &AppHandle) -> Vec<String> {
+    // На Android ресурсы лежат внутри APK и файлом не читаются — список вшит в программу.
+    #[cfg(target_os = "android")]
+    {
+        let _ = app;
+        return zexor_vpn_core::adblock::parse_blocklist(include_str!(
+            "../../resources/adblock/default.txt"
+        ));
+    }
+    #[cfg(not(target_os = "android"))]
+    load_bundled_blocklist_desktop(app)
+}
+
+#[cfg(not(target_os = "android"))]
+fn load_bundled_blocklist_desktop(app: &AppHandle) -> Vec<String> {
     let Ok(resource_dir) = app.path().resource_dir() else {
         return Vec::new();
     };
@@ -260,6 +307,7 @@ fn build_options(
         if !zexor_vpn_core::elevation::is_elevated() {
             return Err(ConnectError::NeedsElevation);
         }
+        #[cfg(not(target_os = "android"))]
         ensure_wintun(app, xray_binary)?;
     }
     Ok(options)
@@ -271,7 +319,7 @@ enum Target<'a> {
     Balanced(&'a [Node]),
 }
 
-fn start_tunnel(
+async fn start_tunnel(
     app: &AppHandle,
     state: &AppState,
     target: Target<'_>,
@@ -280,18 +328,77 @@ fn start_tunnel(
     auto: bool,
 ) -> Result<(), ConnectError> {
     let binary = resolve_xray_binary(app)?;
-    let options = build_options(app, state, &binary)?;
 
-    let config = match target {
-        Target::Node(node) => zexor_vpn_core::build_node_config(node, &options),
-        Target::Balanced(nodes) => zexor_vpn_core::build_balanced_config(nodes, &options)
-            .ok_or(ConnectError::NothingToBalance)?,
+    // Android: сначала системное разрешение на VPN и TUN-интерфейс — его дескриптор получит xray.
+    #[cfg(target_os = "android")]
+    let tun_fd = android::establish(app).await?;
+
+    #[cfg_attr(not(target_os = "android"), allow(unused_mut))]
+    let mut options = match build_options(app, state, &binary) {
+        Ok(options) => options,
+        Err(err) => {
+            #[cfg(target_os = "android")]
+            {
+                android::close_fd(tun_fd);
+                android::stop();
+            }
+            return Err(err);
+        }
     };
+    #[cfg(target_os = "android")]
+    {
+        options.android_tun = true;
+        options.mode = TunnelMode::Proxy;
+    }
+
+    #[cfg_attr(not(target_os = "android"), allow(unused_mut))]
+    let mut config = match target {
+        Target::Node(node) => zexor_vpn_core::build_node_config(node, &options),
+        Target::Balanced(nodes) => match zexor_vpn_core::build_balanced_config(nodes, &options) {
+            Some(config) => config,
+            None => {
+                #[cfg(target_os = "android")]
+                {
+                    android::close_fd(tun_fd);
+                    android::stop();
+                }
+                return Err(ConnectError::NothingToBalance);
+            }
+        },
+    };
+    // Процесс xray на Android не видит системных DNS-настроек — задаём серверы явно.
+    #[cfg(target_os = "android")]
+    if config.get("dns").is_none() {
+        config["dns"] =
+            serde_json::json!({ "servers": ["1.1.1.1", "8.8.8.8"], "queryStrategy": "UseIPv4" });
+    }
     let config_path = zexor_vpn_core::xray::process::config_file_path();
+
+    #[cfg(target_os = "android")]
+    let process = {
+        let started = XrayProcess::start_with(
+            &binary,
+            &config,
+            &config_path,
+            &android::xray_env(tun_fd),
+            Some(tun_fd),
+        );
+        // Свою копию дескриптора закрываем: у xray теперь есть собственная.
+        android::close_fd(tun_fd);
+        match started {
+            Ok(process) => process,
+            Err(err) => {
+                android::stop();
+                return Err(err.into());
+            }
+        }
+    };
+    #[cfg(not(target_os = "android"))]
     let process = XrayProcess::start(&binary, &config, &config_path)?;
 
     // В режиме TUN трафик забирает сам адаптер, системный прокси не нужен (и мешал бы: часть
     // приложений слала бы трафик на локальный порт, минуя правила по приложениям).
+    #[cfg(not(target_os = "android"))]
     if options.mode == TunnelMode::Proxy {
         zexor_vpn_core::proxy::enable(options.http_port)
             .map_err(|e| ConnectError::Proxy(e.to_string()))?;
@@ -325,6 +432,7 @@ pub async fn connect_to_node(
         source_id,
         false,
     )
+    .await
 }
 
 /// Подпись подключения в авто-режиме.
@@ -404,7 +512,8 @@ pub async fn connect_auto(
                     AUTO_LABEL,
                     source_id,
                     true,
-                )?;
+                )
+                .await?;
                 return Ok(AutoOutcome {
                     label: AUTO_LABEL.to_string(),
                     ms: None,
@@ -421,7 +530,8 @@ pub async fn connect_auto(
             AUTO_LABEL,
             source_id,
             true,
-        )?;
+        )
+        .await?;
         return Ok(AutoOutcome {
             label: AUTO_LABEL.to_string(),
             ms: None,
@@ -440,7 +550,8 @@ pub async fn connect_auto(
             AUTO_LABEL,
             source_id,
             true,
-        )?;
+        )
+        .await?;
         return Ok(AutoOutcome {
             label: AUTO_LABEL.to_string(),
             ms: None,
@@ -454,7 +565,8 @@ pub async fn connect_auto(
         node.remark(),
         source_id,
         true,
-    )?;
+    )
+    .await?;
     Ok(AutoOutcome {
         label: node.remark().to_string(),
         ms: Some(ms),
@@ -474,6 +586,12 @@ pub fn disconnect_now(state: &AppState) -> Result<(), ConnectError> {
     drop(connection);
     finish_block_stats(state);
 
+    #[cfg(target_os = "android")]
+    {
+        android::stop();
+        Ok(())
+    }
+    #[cfg(not(target_os = "android"))]
     zexor_vpn_core::proxy::restore().map_err(|e| ConnectError::Proxy(e.to_string()))
 }
 

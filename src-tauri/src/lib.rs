@@ -102,7 +102,9 @@ pub fn run() {
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(tauri_plugin_opener::init());
+    let builder = builder
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_zexor_vpn::init());
 
     builder
         .plugin(tauri_plugin_notification::init())
@@ -158,7 +160,14 @@ pub fn run() {
                 }
             }
             #[cfg(target_os = "android")]
-            auth::set_android_app(app.handle().clone());
+            {
+                auth::set_android_app(app.handle().clone());
+                xray::android::set_app(app.handle().clone());
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    xray::android::init_paths(&handle).await;
+                });
+            }
             app.manage(state::AppState::default());
 
             // Жёсткая гарантия: при любом выходе снимаем системный прокси и
