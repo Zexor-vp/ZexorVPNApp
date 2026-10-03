@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
+import { listen } from '@tauri-apps/api/event';
 import { getTicket, getTickets, type TicketSummary } from '../lib/cabinet';
 
-const POLL_MS = 60_000;
+const POLL_MS = 30_000;
 const STORAGE_KEY = 'zexor.support.seen';
 
 /** id обращения → id последнего прочитанного сообщения поддержки. */
@@ -40,34 +40,36 @@ const Ctx = createContext<SupportUnread>({ unread: {}, total: 0, markSeen: () =>
 
 export const useSupportUnread = () => useContext(Ctx);
 
-async function notify(title: string, body: string) {
-  try {
-    let granted = await isPermissionGranted();
-    if (!granted) granted = (await requestPermission()) === 'granted';
-    if (granted) sendNotification({ title, body });
-  } catch {
-    // Уведомления не критичны: красный значок в приложении всё равно появится.
-  }
+/** Событие от Rust: свежий список обращений. Опрос сервера идёт там (каждые 20 секунд), потому что таймеры
+ * в самой странице замедляются, когда окно закрыто другими окнами или спрятано в трей. Там же показывается
+ * системное уведомление о новом ответе; здесь — только красные значки. */
+export const SUPPORT_EVENT = 'support-tickets';
+
+/** Подписка на свежий список обращений из Rust. */
+export function onSupportTickets(handler: (items: TicketSummary[]) => void): () => void {
+  let off: (() => void) | undefined;
+  let cancelled = false;
+  listen<{ items?: TicketSummary[] }>(SUPPORT_EVENT, (event) => handler(event.payload?.items ?? []))
+    .then((unlisten) => {
+      if (cancelled) unlisten();
+      else off = unlisten;
+    })
+    .catch(() => undefined);
+  return () => {
+    cancelled = true;
+    off?.();
+  };
 }
 
 /**
- * Раз в минуту проверяет обращения. Новый ответ поддержки → системное уведомление Windows
- * (даже если окно спрятано в трей) и красные значки в приложении.
+ * Следит за ответами поддержки и держит красные значки: на вкладке «Поддержка» и у обращения.
  */
 export function SupportUnreadProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   const [unread, setUnread] = useState<Record<number, number>>({});
   const seenRef = useRef<SeenMap | null>(loadSeen());
-  const notifiedRef = useRef<Set<string>>(new Set());
-  const firstRunRef = useRef(true);
   const [tick, setTick] = useState(0);
 
-  const poll = useCallback(async () => {
-    let items: TicketSummary[];
-    try {
-      items = (await getTickets()).items;
-    } catch {
-      return; // нет сети или поддержка выключена — попробуем в следующий раз
-    }
+  const processItems = useCallback(async (items: TicketSummary[]) => {
 
     // Первый запуск: всё, что уже есть, считаем прочитанным, чтобы не засыпать уведомлениями.
     if (seenRef.current === null) {
@@ -91,16 +93,18 @@ export function SupportUnreadProvider({ enabled, children }: { enabled: boolean;
         // остаёмся на «1»
       }
       next[ticket.id] = count;
-
-      const key = `${ticket.id}:${last.id}`;
-      if (!notifiedRef.current.has(key)) {
-        notifiedRef.current.add(key);
-        if (!firstRunRef.current) void notify('Ответ поддержки', ticket.title);
-      }
     }
-    firstRunRef.current = false;
     setUnread(next);
   }, []);
+
+  // Запасной опрос из страницы — на случай, если событие от Rust по какой-то причине не пришло.
+  const poll = useCallback(async () => {
+    try {
+      await processItems((await getTickets()).items);
+    } catch {
+      // нет сети или поддержка выключена — попробуем в следующий раз
+    }
+  }, [processItems]);
 
   useEffect(() => {
     if (!enabled) {
@@ -109,8 +113,12 @@ export function SupportUnreadProvider({ enabled, children }: { enabled: boolean;
     }
     void poll();
     const timer = window.setInterval(() => void poll(), POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [enabled, poll, tick]);
+    const off = onSupportTickets((items) => void processItems(items));
+    return () => {
+      window.clearInterval(timer);
+      off();
+    };
+  }, [enabled, poll, processItems, tick]);
 
   const markSeen = useCallback((ticketId: number, lastMessageId: number) => {
     const seen = seenRef.current ?? {};

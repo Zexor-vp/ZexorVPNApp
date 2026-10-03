@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDownIcon, RefreshIcon } from './Icons';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useOutsideClose } from '../hooks/useOutsideClose';
+import { useT } from '../i18n';
 import { ServerName } from './Flag';
 import type { NodeSummary } from '../lib/commands';
 
@@ -9,10 +10,11 @@ import type { NodeSummary } from '../lib/commands';
 export type PingValue = number | null | undefined;
 
 export function PingBadge({ ms }: { ms: PingValue }) {
+  const t = useT();
   if (ms === undefined) return <span className="ping ping-pending">…</span>;
-  if (ms === null) return <span className="ping ping-down">недоступен</span>;
+  if (ms === null) return <span className="ping ping-down">{t('недоступен')}</span>;
   const tone = ms < 150 ? 'ping-good' : ms < 300 ? 'ping-mid' : 'ping-bad';
-  return <span className={`ping ${tone}`}>{ms} мс</span>;
+  return <span className={`ping ${tone}`}>{t('{ms} мс', { ms })}</span>;
 }
 
 interface Props {
@@ -28,6 +30,7 @@ interface Props {
 }
 
 export default function ServerPicker({ nodes, selected, pings, pinging, disabled, auto, onSelect, onRefreshPings }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -49,14 +52,14 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
 
   if (expanded) {
     return (
-      <div className={`server-list ${auto ? 'server-list-auto' : ''}`} role="listbox" aria-label="Серверы">
+      <div className={`server-list ${auto ? 'server-list-auto' : ''}`} role="listbox" aria-label={t('Серверы')}>
         <div className="row">
-          <span className="label">{auto ? 'Авто выбор сервера' : 'Сервер'}</span>
+          <span className="label">{auto ? t('Авто выбор сервера') : t('Сервер')}</span>
           <button type="button" className="link-btn" disabled={pinging || auto} onClick={onRefreshPings}>
-            <RefreshIcon /> {pinging ? 'Измеряем…' : 'Обновить пинг'}
+            <RefreshIcon /> {pinging ? t('Измеряем…') : t('Обновить пинг')}
           </button>
         </div>
-        {nodes.length === 0 && <span className="muted">Нет серверов</span>}
+        {nodes.length === 0 && <span className="muted">{t('Нет серверов')}</span>}
         {nodes.map((node) => {
           const active = !auto && node.remark === selected;
           return (
@@ -94,12 +97,12 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
         onClick={toggle}
       >
         <span>
-          <span className="label">Сервер</span>
+          <span className="label">{t('Сервер')}</span>
           <span className="dropdown-value">
             {auto ? (
-              <span className="auto-caption">АВТО ВЫБОР СЕРВЕРА</span>
+              <span className="auto-caption">{t('Авто выбор сервера').toUpperCase()}</span>
             ) : nodes.length === 0 ? (
-              'Нет серверов'
+              t('Нет серверов')
             ) : (
               <>
                 {current ? <ServerName remark={current.remark} /> : '—'} {current && <PingBadge ms={pings[current.remark]} />}
@@ -135,7 +138,7 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
           ))}
 
           <button type="button" className="dropdown-footer" disabled={pinging} onClick={onRefreshPings}>
-            <RefreshIcon /> {pinging ? 'Измеряем…' : 'Обновить пинг'}
+            <RefreshIcon /> {pinging ? t('Измеряем…') : t('Обновить пинг')}
           </button>
         </div>
       )}

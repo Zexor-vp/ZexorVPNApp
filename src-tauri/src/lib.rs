@@ -38,6 +38,13 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     let disconnect = MenuItem::with_id(app, "disconnect", "Отключить VPN", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Выйти (VPN отключится)", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &disconnect, &quit])?;
+    if let Some(state) = app.try_state::<state::AppState>() {
+        *state.tray_items.lock().unwrap() = Some(state::TrayItems {
+            open: open.clone(),
+            disconnect: disconnect.clone(),
+            quit: quit.clone(),
+        });
+    }
 
     let mut builder = TrayIconBuilder::with_id("main")
         .tooltip("Zexor VPN")
@@ -117,6 +124,7 @@ pub fn run() {
             settings::remove_routing_app,
             settings::list_running_apps,
             settings::set_telemetry,
+            settings::set_native_labels,
             cabinet::cabinet_request,
             cabinet::open_external,
             cabinet::open_payment_url,
@@ -137,6 +145,7 @@ pub fn run() {
             setup_tray(app)?;
             xray::export_geo_assets_dir(app.handle());
             sync::spawn(app.handle().clone());
+            sync::spawn_support_poll(app.handle().clone());
 
             // Дополнительный список рекламы обновляется раз в сутки, в фоне и без шума.
             let app_handle = app.handle().clone();

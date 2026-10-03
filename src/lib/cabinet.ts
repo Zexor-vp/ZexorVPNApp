@@ -222,10 +222,10 @@ export const replyTicket = (id: number, message: string): Promise<TicketMessage>
   cabinetRequest('POST', `${API}/tickets/${id}/messages`, { message });
 
 export const TICKET_STATUS_LABEL: Record<string, string> = {
-  open: 'Открыто',
-  pending: 'В работе',
-  answered: 'Есть ответ',
-  closed: 'Закрыто',
+  open: 'Открыто', // i18n-key
+  pending: 'В работе', // i18n-key
+  answered: 'Есть ответ', // i18n-key
+  closed: 'Закрыто', // i18n-key
 };
 
 export interface TariffPeriod {

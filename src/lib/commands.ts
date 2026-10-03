@@ -1,6 +1,7 @@
 // Типизированные обёртки над Tauri invoke() — единственное место, которое
 // знает точные имена команд и форму их аргументов/ответов.
 import { invoke } from '@tauri-apps/api/core';
+import { tr } from '../i18n';
 
 export interface SessionInfo {
   email: string | null;
@@ -23,23 +24,31 @@ function isCommandError(err: unknown): err is CommandError {
   return typeof err === 'object' && err !== null && 'kind' in err && 'message' in err;
 }
 
+/** Текст ошибки как он пришёл (по-русски, без перевода) — для проверок по содержимому. */
+export function rawErrorMessage(err: unknown): string {
+  if (isCommandError(err)) return err.message;
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
 /** Превращает ошибку команды в текст для пользователя. */
 export function errorMessage(err: unknown): string {
   if (isCommandError(err)) {
     switch (err.kind) {
       case 'InvalidCredentials':
-        return 'Неверный email или пароль.';
+        return tr('Неверный email или пароль.');
       case 'Network':
-        return 'Нет связи с сервером. Проверьте интернет-соединение.';
+        return tr('Нет связи с сервером. Проверьте интернет-соединение.');
       case 'NeedsLogin':
-        return 'Сессия истекла — войдите снова.';
+        return tr('Сессия истекла — войдите снова.');
       case 'NoSubscription':
-        return 'У аккаунта нет активной подписки.';
+        return tr('У аккаунта нет активной подписки.');
       default:
-        return err.message;
+        // Сообщения Rust-части приходят по-русски; перевод ищется по тексту (и по шаблону с подстановками).
+        return tr(err.message);
     }
   }
-  if (err instanceof Error) return err.message;
+  if (err instanceof Error) return tr(err.message);
   return String(err);
 }
 
@@ -246,3 +255,13 @@ export const removeRoutingApp = (name: string): Promise<AppSettings> =>
 export const listRunningApps = (): Promise<string[]> => invoke('list_running_apps');
 
 export const setTelemetry = (enabled: boolean): Promise<AppSettings> => invoke('set_telemetry', { enabled });
+
+/** Тексты оболочки (меню трея, заголовок системного уведомления) на языке интерфейса. */
+export interface NativeLabels {
+  support_reply: string;
+  tray_open: string;
+  tray_disconnect: string;
+  tray_quit: string;
+}
+
+export const setNativeLabels = (labels: NativeLabels): Promise<void> => invoke('set_native_labels', { labels });

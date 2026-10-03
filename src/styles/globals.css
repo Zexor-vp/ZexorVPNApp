@@ -349,7 +349,9 @@ h2 {
 
 /* Ползунок Proxy ⇄ TUN */
 
+/* Ползунок двигается физически влево/вправо — в языках справа налево (фарси) порядок не переворачиваем. */
 .mode-slider {
+  direction: ltr;
   position: relative;
   display: inline-grid;
   grid-template-columns: 1fr 1fr;
@@ -1512,6 +1514,20 @@ h2 {
   .page-body > .hint-bar,
   .page-body > .page-title {
     column-span: all;
+  }
+
+  /* В карточке подключения кнопка «Подключиться» стоит выше «Авто» и списка серверов:
+     раскрытый список длинный, и кнопка под ним уезжала за пределы экрана. */
+  .card > .connect-btn {
+    order: 1;
+  }
+
+  .card > .picker-row {
+    order: 2;
+  }
+
+  .card > .connect-btn ~ * {
+    order: 3;
   }
 
   /* Кнопка «Назад» в шапке — заметная, а не текстовая ссылка */

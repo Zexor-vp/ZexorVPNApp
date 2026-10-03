@@ -12,6 +12,7 @@ import {
   type SessionInfo,
 } from '../lib/commands';
 import { CABINET_URL } from '../lib/cabinet';
+import { useT } from '../i18n';
 
 const BOT_URL = 'https://t.me/Zexorvpnbot';
 
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export default function Login({ onSuccess }: Props) {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function Login({ onSuccess }: Props) {
       const session = await poll();
       if (session) return session;
       if (Date.now() > deadline) {
-        throw new Error('Время ожидания входа истекло — попробуйте ещё раз.');
+        throw new Error(t('Время ожидания входа истекло — попробуйте ещё раз.'));
       }
       await sleep(POLL_INTERVAL_MS);
     }
@@ -91,8 +93,8 @@ export default function Login({ onSuccess }: Props) {
   return (
     <PageShell>
       <div className="page-title">
-        <h1>Вход</h1>
-        <p>Войдите или зарегистрируйтесь, чтобы получить доступ к VPN Zexor</p>
+        <h1>{t('Вход')}</h1>
+        <p>{t('Войдите или зарегистрируйтесь, чтобы получить доступ к VPN Zexor')}</p>
       </div>
 
       <form className="card" onSubmit={handleSubmit}>
@@ -101,25 +103,25 @@ export default function Login({ onSuccess }: Props) {
             <span className="spinner" aria-hidden />
             <p>
               {pending === 'telegram'
-                ? 'Откройте бота в Telegram и нажмите «Start» — вход подтвердится автоматически.'
-                : 'Завершите вход через Google в открывшемся браузере — приложение войдёт автоматически.'}
+                ? t('Откройте бота в Telegram и нажмите «Start» — вход подтвердится автоматически.')
+                : t('Завершите вход через Google в открывшемся браузере — приложение войдёт автоматически.')}
             </p>
             <Button type="button" variant="ghost" onClick={cancelExternalLogin}>
-              Отмена
+              {t('Отмена')}
             </Button>
           </div>
         ) : (
           <>
             <div className="login-social">
               <Button type="button" variant="secondary" onClick={() => handleExternalLogin('telegram')}>
-                Войти через Telegram
+                {t('Войти через Telegram')}
               </Button>
               <Button type="button" variant="secondary" onClick={() => handleExternalLogin('google')}>
-                Войти через Google
+                {t('Войти через Google')}
               </Button>
             </div>
             <div className="login-divider">
-              <span>или по email</span>
+              <span>{t('или по email')}</span>
             </div>
           </>
         )}
@@ -138,7 +140,7 @@ export default function Login({ onSuccess }: Props) {
         </label>
 
         <label className="field">
-          <span>Пароль</span>
+          <span>{t('Пароль')}</span>
           <input
             type="password"
             required
@@ -152,21 +154,21 @@ export default function Login({ onSuccess }: Props) {
         {error && <p className="form-error">{error}</p>}
 
         <Button type="submit" loading={loading} disabled={pending !== null} className="login-submit">
-          Войти
+          {t('Войти')}
         </Button>
       </form>
 
       <section className="card">
-        <span className="label">Нет аккаунта?</span>
+        <span className="label">{t('Нет аккаунта?')}</span>
         <p className="muted" style={{ margin: 0 }}>
-          Аккаунт создаётся за минуту — в Telegram-боте или на сайте. После регистрации вернитесь сюда и войдите.
+          {t('Аккаунт создаётся за минуту — в Telegram-боте или на сайте. После регистрации вернитесь сюда и войдите.')}
         </p>
         <div className="login-social">
           <Button type="button" variant="secondary" onClick={() => void openExternal(BOT_URL)}>
-            Зарегистрироваться в Telegram
+            {t('Зарегистрироваться в Telegram')}
           </Button>
           <Button type="button" variant="secondary" onClick={() => void openExternal(CABINET_URL)}>
-            Зарегистрироваться на сайте
+            {t('Зарегистрироваться на сайте')}
           </Button>
         </div>
       </section>

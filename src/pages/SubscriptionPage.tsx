@@ -21,13 +21,15 @@ import {
   setAutopay,
   type DevicePrice,
 } from '../lib/cabinet';
-import { errorMessage, openExternal } from '../lib/commands';
+import { errorMessage, openExternal, rawErrorMessage } from '../lib/commands';
+import { currentLocale, useT } from '../i18n';
 
 type Confirm =
   | { kind: 'devices'; count: number; price: DevicePrice }
   | { kind: 'delete-device'; hwid: string; name: string };
 
 export default function SubscriptionPage() {
+  const t = useT();
   const subscription = useAsync(() => getSubscription(), []);
   const me = useAsync(() => getMe(), []);
   const purchase = useAsync(() => getPurchaseOptions(), []);
@@ -67,11 +69,11 @@ export default function SubscriptionPage() {
         case 'devices':
           await purchaseDevices(confirm.count);
           setExtraDevices(1);
-          setMessage({ tone: 'ok', text: 'Устройства добавлены.' });
+          setMessage({ tone: 'ok', text: t('Устройства добавлены.') });
           break;
         case 'delete-device':
           await deleteDevice(confirm.hwid);
-          setMessage({ tone: 'ok', text: 'Устройство удалено.' });
+          setMessage({ tone: 'ok', text: t('Устройство удалено.') });
           break;
       }
       setConfirm(null);
@@ -80,7 +82,7 @@ export default function SubscriptionPage() {
       if (reportAuthLoss(err)) return;
       const text = errorMessage(err);
       setConfirm(null);
-      setMessage({ tone: 'error', text, topUp: /средств|balance|funds/i.test(text) });
+      setMessage({ tone: 'error', text, topUp: /средств|balance|funds/i.test(rawErrorMessage(err)) });
     } finally {
       setWorking(false);
     }
@@ -99,23 +101,23 @@ export default function SubscriptionPage() {
     if (!confirm) return '';
     switch (confirm.kind) {
       case 'devices':
-        return `Добавить устройств: ${confirm.count} за ${confirm.price.total_price_label ?? ''}?`;
+        return t('Добавить устройств: {count} за {price}?', { count: confirm.count, price: confirm.price.total_price_label ?? '' });
       case 'delete-device':
-        return `Удалить устройство «${confirm.name}»? Оно освободит место в лимите.`;
+        return t('Удалить устройство «{name}»? Оно освободит место в лимите.', { name: confirm.name });
     }
   })();
 
   return (
     <PageShell>
       <div className="page-title">
-        <h1>Подписка</h1>
-        <p>Тариф, продление и дополнительные опции</p>
+        <h1>{t('Подписка')}</h1>
+        <p>{t('Тариф, продление и дополнительные опции')}</p>
       </div>
 
       {message && (
         <div className="card">
           <p className={message.tone === 'ok' ? 'form-ok' : 'form-error'}>{message.text}</p>
-          {message.topUp && <Button onClick={() => setTopUpOpen(true)}>Пополнить баланс</Button>}
+          {message.topUp && <Button onClick={() => setTopUpOpen(true)}>{t('Пополнить баланс')}</Button>}
         </div>
       )}
 
@@ -124,31 +126,33 @@ export default function SubscriptionPage() {
           <>
             <div className="row">
               <div>
-                <span className="label">Тариф</span>
+                <span className="label">{t('Тариф')}</span>
                 <div className="tile-value" style={{ marginTop: '0.3rem' }}>
-                  {sub.tariff_name ?? 'Подписка'}
+                  {sub.tariff_name ?? t('Подписка')}
                 </div>
               </div>
               <span className={`chip ${sub.is_expired ? 'chip-danger' : sub.is_grace_period ? 'chip-warn' : ''}`}>
-                {sub.is_expired ? 'Истекла' : sub.is_grace_period ? 'Грейс' : sub.is_trial ? 'Пробный период' : 'Активна'}
+                {sub.is_expired ? t('Истекла') : sub.is_grace_period ? t('Грейс') : sub.is_trial ? t('Пробный период') : t('Активна')}
               </span>
             </div>
             <p className="muted" style={{ margin: 0 }}>
-              Действует до {new Date(sub.end_date).toLocaleDateString('ru-RU')} · осталось{' '}
-              {sub.days_left > 0 ? `${sub.days_left} дн.` : sub.time_left_display || '0 дн.'}
+              {t('Действует до {date} · осталось {left}', {
+                date: new Date(sub.end_date).toLocaleDateString(currentLocale()),
+                left: sub.days_left > 0 ? t('{n} дн.', { n: sub.days_left }) : sub.time_left_display || t('0 дн.'),
+              })}
             </p>
             {sub.traffic_limit_gb > 0 && (
               <>
                 <ProgressBar percent={sub.traffic_used_percent} />
                 <p className="muted" style={{ margin: 0 }}>
-                  Трафик: {sub.traffic_used_gb.toFixed(1)} из {sub.traffic_limit_gb} ГБ
+                  {t('Трафик: {used} из {limit} ГБ', { used: sub.traffic_used_gb.toFixed(1), limit: sub.traffic_limit_gb })}
                 </p>
               </>
             )}
             {!sub.is_daily && (
               <Toggle
-                label="Автопродление"
-                hint="Спишем с баланса за несколько дней до окончания"
+                label={t('Автопродление')}
+                hint={t('Спишем с баланса за несколько дней до окончания')}
                 checked={sub.autopay_enabled}
                 onChange={handleAutopay}
               />
@@ -160,8 +164,8 @@ export default function SubscriptionPage() {
           </div>
         ) : (
           <>
-            <p className="empty">{subscription.error ?? 'У аккаунта нет активной подписки.'}</p>
-            <Button onClick={() => void openExternal(`${CABINET_URL}/subscription`)}>Оформить в кабинете</Button>
+            <p className="empty">{subscription.error ?? t('У аккаунта нет активной подписки.')}</p>
+            <Button onClick={() => void openExternal(`${CABINET_URL}/subscription`)}>{t('Оформить в кабинете')}</Button>
           </>
         )}
       </section>
@@ -170,7 +174,7 @@ export default function SubscriptionPage() {
         <section className="card">
           <div className="row">
             <div>
-              <span className="label">Баланс</span>
+              <span className="label">{t('Баланс')}</span>
               <div className="tile-value" style={{ marginTop: '0.3rem' }}>
                 {formatMoney(
                   currency === 'EUR' ? me.data.balance_eur_cents : currency === 'USD' ? me.data.balance_usd_cents : me.data.balance_kopeks,
@@ -179,7 +183,7 @@ export default function SubscriptionPage() {
               </div>
             </div>
             <Button variant="secondary" onClick={() => setTopUpOpen(true)}>
-              Пополнить
+              {t('Пополнить')}
             </Button>
           </div>
         </section>
@@ -199,9 +203,11 @@ export default function SubscriptionPage() {
       {sub && (
         <section className="card">
           <div className="row">
-            <span className="label">Устройства</span>
+            <span className="label">{t('Устройства')}</span>
             <span className="muted">
-              {devices.data ? `${devices.data.total} из ${devices.data.device_limit}` : `лимит ${sub.device_limit}`}
+              {devices.data
+                ? t('{used} из {limit}', { used: devices.data.total, limit: devices.data.device_limit })
+                : t('лимит {limit}', { limit: sub.device_limit })}
             </span>
           </div>
           {devices.data && devices.data.devices.length > 0 && (
@@ -216,7 +222,7 @@ export default function SubscriptionPage() {
                     </span>
                     <button
                       className="icon-btn"
-                      aria-label={`Удалить устройство ${name}`}
+                      aria-label={t('Удалить устройство {name}', { name })}
                       onClick={() => setConfirm({ kind: 'delete-device', hwid: device.hwid, name })}
                     >
                       <TrashIcon />
@@ -228,17 +234,17 @@ export default function SubscriptionPage() {
           )}
           {devicePrice?.available === false ? (
             <p className="muted" style={{ margin: 0 }}>
-              {devicePrice.reason ?? 'Докупка устройств недоступна.'}
+              {devicePrice.reason ?? t('Докупка устройств недоступна.')}
             </p>
           ) : (
             <div className="row">
               <div className="stepper">
-                <button aria-label="Меньше" onClick={() => setExtraDevices((n) => Math.max(1, n - 1))}>
+                <button aria-label={t('Меньше')} onClick={() => setExtraDevices((n) => Math.max(1, n - 1))}>
                   −
                 </button>
                 <span>{extraDevices}</span>
                 <button
-                  aria-label="Больше"
+                  aria-label={t('Больше')}
                   onClick={() => setExtraDevices((n) => Math.min(devicePrice?.can_add ?? 10, n + 1))}
                 >
                   +
@@ -249,7 +255,7 @@ export default function SubscriptionPage() {
                 disabled={!devicePrice?.available}
                 onClick={() => devicePrice && setConfirm({ kind: 'devices', count: extraDevices, price: devicePrice })}
               >
-                Докупить{devicePrice?.total_price_label ? ` · ${devicePrice.total_price_label}` : ''}
+                {t('Докупить')}{devicePrice?.total_price_label ? ` · ${devicePrice.total_price_label}` : ''}
               </Button>
             </div>
           )}
@@ -262,21 +268,21 @@ export default function SubscriptionPage() {
           onClose={() => setTopUpOpen(false)}
           onPaid={() => {
             setTopUpOpen(false);
-            setMessage({ tone: 'ok', text: 'Баланс пополнен.' });
+            setMessage({ tone: 'ok', text: t('Баланс пополнен.') });
             void refreshAll();
           }}
         />
       )}
 
       {confirm && (
-        <Modal title="Подтвердите" onClose={() => !working && setConfirm(null)}>
+        <Modal title={t('Подтвердите')} onClose={() => !working && setConfirm(null)}>
           <p style={{ margin: 0 }}>{confirmText}</p>
           <div className="modal-actions">
             <Button variant="ghost" disabled={working} onClick={() => setConfirm(null)}>
-              Отмена
+              {t('Отмена')}
             </Button>
             <Button loading={working} onClick={() => void runConfirmed()}>
-              Подтвердить
+              {t('Подтвердить')}
             </Button>
           </div>
         </Modal>

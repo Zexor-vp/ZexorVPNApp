@@ -1,12 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
 import { CheckIcon, ChevronDownIcon } from './Icons';
 import { useOutsideClose } from '../hooks/useOutsideClose';
+import { useT } from '../i18n';
 
 export type ProtocolValue = 'vless' | 'wireguard';
 
 const OPTIONS: { value: ProtocolValue; short: string; title: string; hint: string; warn?: boolean }[] = [
-  { value: 'vless', short: 'VLESS', title: 'VLESS (REALITY)', hint: 'Работает почти везде, в том числе в России и Иране' },
-  { value: 'wireguard', short: 'WireGuard', title: 'WireGuard', hint: 'Простой и быстрый, но не работает в России и Иране', warn: true },
+  { value: 'vless', short: 'VLESS', title: 'VLESS (REALITY)', hint: 'Работает почти везде, в том числе в России и Иране' }, // i18n-key
+  { value: 'wireguard', short: 'WireGuard', title: 'WireGuard', hint: 'Простой и быстрый, но не работает в России и Иране', warn: true }, // i18n-key
 ];
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 
 /** Компактная кнопка-«пилюля» с всплывающим окном выбора протокола. */
 export default function ProtocolMenu({ value, onChange, disabled }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -31,7 +33,7 @@ export default function ProtocolMenu({ value, onChange, disabled }: Props) {
         className="pill-btn"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Протокол: ${current.title}`}
+        aria-label={t('Протокол: {name}', { name: current.title })}
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
       >
@@ -41,7 +43,7 @@ export default function ProtocolMenu({ value, onChange, disabled }: Props) {
       {open && (
         <div className="dropdown-panel dropdown-panel-compact" role="listbox">
           <span className="label" style={{ padding: '0.3rem 0.75rem 0.15rem', display: 'block' }}>
-            Протокол
+            {t('Протокол')}
           </span>
           {OPTIONS.map((option) => (
             <button
@@ -57,7 +59,7 @@ export default function ProtocolMenu({ value, onChange, disabled }: Props) {
             >
               <span className="dropdown-item-main">
                 <strong>{option.title}</strong>
-                <span className={option.warn ? 'warn-text' : 'muted'}>{option.hint}</span>
+                <span className={option.warn ? 'warn-text' : 'muted'}>{t(option.hint)}</span>
               </span>
               {option.value === value && <CheckIcon />}
             </button>

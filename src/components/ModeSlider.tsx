@@ -1,3 +1,4 @@
+import { useT } from '../i18n';
 import type { TunnelMode } from '../lib/commands';
 
 interface Props {
@@ -9,11 +10,12 @@ interface Props {
 
 /** Ползунок переключения Proxy ⇄ TUN. */
 export default function ModeSlider({ value, disabled, onChange }: Props) {
+  const t = useT();
   return (
     <div
       className={`mode-slider ${value === 'tun' ? 'mode-slider-tun' : ''}`}
       role="radiogroup"
-      aria-label="Режим работы"
+      aria-label={t('Режим работы')}
     >
       <span className="mode-thumb" aria-hidden />
       {(['proxy', 'tun'] as const).map((mode) => (

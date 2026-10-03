@@ -4,7 +4,8 @@ import Button from '../components/Button';
 import PageShell from '../components/PageShell';
 import { ChevronDownIcon, PlusIcon } from '../components/Icons';
 import { reportAuthLoss, useAsync } from '../hooks/useAsync';
-import { useSupportUnread } from '../hooks/useSupportUnread';
+import { onSupportTickets, useSupportUnread } from '../hooks/useSupportUnread';
+import { currentLocale, useI18n, useT } from '../i18n';
 import {
   CABINET_URL,
   SUPPORT_URL,
@@ -22,15 +23,16 @@ import {
 } from '../lib/cabinet';
 import { connectionStatus, errorMessage, openExternal } from '../lib/commands';
 
-const THREAD_POLL_MS = 15_000;
+const THREAD_POLL_MS = 5_000;
 
 const statusChip = (status: string) =>
   status === 'closed' ? 'chip chip-danger' : status === 'answered' ? 'chip' : 'chip chip-warn';
 
 const formatWhen = (iso: string) =>
-  new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  new Date(iso).toLocaleString(currentLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-/** Данные, которые обычно просит поддержка: версия, подключение, протокол, подписка. Секретов нет. */
+/** Данные, которые обычно просит поддержка: версия, подключение, протокол, подписка. Секретов нет.
+ * Текст намеренно не переводится: его читает поддержка, а не пользователь. */
 async function collectDiagnostics(): Promise<string> {
   const settle = async <T,>(fn: () => Promise<T>): Promise<T | null> => {
     try {
@@ -61,13 +63,19 @@ async function collectDiagnostics(): Promise<string> {
 type View = { kind: 'list' } | { kind: 'new' } | { kind: 'thread'; id: number };
 
 export default function SupportPage() {
+  const t = useT();
   const [view, setView] = useState<View>({ kind: 'list' });
 
   return (
     <PageShell
       actions={
         view.kind === 'list' ? (
-          <button className="icon-btn" aria-label="Новое обращение" title="Новое обращение" onClick={() => setView({ kind: 'new' })}>
+          <button
+            className="icon-btn"
+            aria-label={t('Новое обращение')}
+            title={t('Новое обращение')}
+            onClick={() => setView({ kind: 'new' })}
+          >
             <PlusIcon />
           </button>
         ) : undefined
@@ -83,6 +91,8 @@ export default function SupportPage() {
 }
 
 function TicketList({ onNew, onOpen }: { onNew: () => void; onOpen: (id: number) => void }) {
+  const t = useT();
+  const { lang } = useI18n();
   const tickets = useAsync(() => getTickets(), []);
   const { unread, total } = useSupportUnread();
 
@@ -96,26 +106,25 @@ function TicketList({ onNew, onOpen }: { onNew: () => void; onOpen: (id: number)
     void reload();
   }, [total, reload]);
 
-  const faq = useAsync(() => getFaq('ru'), []);
+  const faq = useAsync(() => getFaq(lang), [lang]);
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
   return (
     <>
       <div className="page-title">
-        <h1>Поддержка</h1>
-        <p>Мои обращения, ответы на частые вопросы и связь с нами</p>
+        <h1>{t('Поддержка')}</h1>
+        <p>{t('Мои обращения, ответы на частые вопросы и связь с нами')}</p>
       </div>
 
       <section className="card card-glow">
-        <Button onClick={onNew}>Создать обращение</Button>
+        <Button onClick={onNew}>{t('Создать обращение')}</Button>
         <p className="muted" style={{ margin: 0 }}>
-          Опишите проблему — ответим здесь же, в приложении, а уведомление придёт в Telegram. Нашли ошибку? Сообщите — подарим
-          бесплатные дни к подписке.
+          {t('Опишите проблему — ответим здесь же, в приложении, а уведомление придёт в Telegram. Нашли ошибку? Сообщите — подарим бесплатные дни к подписке.')}
         </p>
       </section>
 
       <section className="card">
-        <span className="label">Мои обращения</span>
+        <span className="label">{t('Мои обращения')}</span>
         {tickets.loading && !tickets.data ? (
           <div className="empty">
             <span className="spinner" aria-hidden />
@@ -127,11 +136,13 @@ function TicketList({ onNew, onOpen }: { onNew: () => void; onOpen: (id: number)
                 <span className="ticket-main">
                   <strong className={unread[ticket.id] ? 'ticket-title-unread' : undefined}>{ticket.title}</strong>
                   <span className="muted ticket-preview">
-                    {ticket.last_message ? `${ticket.last_message.is_from_admin ? 'Поддержка: ' : 'Вы: '}${ticket.last_message.message_text}` : '—'}
+                    {ticket.last_message
+                      ? `${ticket.last_message.is_from_admin ? t('Поддержка') : t('Вы')}: ${ticket.last_message.message_text}`
+                      : '—'}
                   </span>
                 </span>
                 <span className="ticket-side">
-                  {unread[ticket.id] ? <span className="badge-red" aria-label={`Новых ответов: ${unread[ticket.id]}`}>{unread[ticket.id]}</span> : <span className={statusChip(ticket.status)}>{TICKET_STATUS_LABEL[ticket.status] ?? ticket.status}</span>}
+                  {unread[ticket.id] ? <span className="badge-red" aria-label={t('Новых ответов: {n}', { n: unread[ticket.id] })}>{unread[ticket.id]}</span> : <span className={statusChip(ticket.status)}>{TICKET_STATUS_LABEL[ticket.status] ? t(TICKET_STATUS_LABEL[ticket.status]) : ticket.status}</span>}
                   <span className="muted">{formatWhen(ticket.updated_at)}</span>
                 </span>
               </button>
@@ -141,16 +152,16 @@ function TicketList({ onNew, onOpen }: { onNew: () => void; onOpen: (id: number)
           <>
             <p className="form-error">{tickets.error}</p>
             <Button variant="secondary" onClick={() => void openExternal(SUPPORT_URL)}>
-              Написать в Telegram
+              {t('Написать в Telegram')}
             </Button>
           </>
         ) : (
-          <p className="empty">Обращений пока нет.</p>
+          <p className="empty">{t('Обращений пока нет.')}</p>
         )}
       </section>
 
       <section className="card">
-        <span className="label">Частые вопросы</span>
+        <span className="label">{t('Частые вопросы')}</span>
         {faq.loading && !faq.data ? (
           <div className="empty">
             <span className="spinner" aria-hidden />
@@ -171,18 +182,18 @@ function TicketList({ onNew, onOpen }: { onNew: () => void; onOpen: (id: number)
           </div>
         ) : (
           <p className="muted" style={{ margin: 0 }}>
-            {faq.error ?? 'Пока нет статей.'}
+            {faq.error ?? t('Пока нет статей.')}
           </p>
         )}
       </section>
 
       <section className="card">
-        <span className="label">Другие способы связи</span>
+        <span className="label">{t('Другие способы связи')}</span>
         <Button variant="secondary" onClick={() => void openExternal(SUPPORT_URL)}>
-          Написать в Telegram
+          {t('Написать в Telegram')}
         </Button>
         <Button variant="ghost" onClick={() => void openExternal(`${CABINET_URL}/support`)}>
-          Открыть поддержку в кабинете
+          {t('Открыть поддержку в кабинете')}
         </Button>
       </section>
     </>
@@ -190,6 +201,7 @@ function TicketList({ onNew, onOpen }: { onNew: () => void; onOpen: (id: number)
 }
 
 function NewTicket({ onCancel, onCreated }: { onCancel: () => void; onCreated: (id: number) => void }) {
+  const t = useT();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [withDiagnostics, setWithDiagnostics] = useState(true);
@@ -215,14 +227,14 @@ function NewTicket({ onCancel, onCreated }: { onCancel: () => void; onCreated: (
   return (
     <>
       <div className="page-title">
-        <h1>Новое обращение</h1>
-        <p>Расскажите, что случилось, — так нам проще помочь</p>
+        <h1>{t('Новое обращение')}</h1>
+        <p>{t('Расскажите, что случилось, — так нам проще помочь')}</p>
       </div>
       <form className="card" onSubmit={submit} style={{ gap: '0.75rem' }}>
-        <input className="text-input" placeholder="Коротко о проблеме" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
+        <input className="text-input" placeholder={t('Коротко о проблеме')} value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
         <textarea
           className="text-input text-area"
-          placeholder="Подробности: что делали, что увидели, какая ошибка"
+          placeholder={t('Подробности: что делали, что увидели, какая ошибка')}
           rows={6}
           value={message}
           maxLength={3500}
@@ -230,15 +242,15 @@ function NewTicket({ onCancel, onCreated }: { onCancel: () => void; onCreated: (
         />
         <label className="check-row">
           <input type="checkbox" checked={withDiagnostics} onChange={(e) => setWithDiagnostics(e.target.checked)} />
-          <span>Приложить данные приложения (версия, подключение, подписка) — без паролей и ключей</span>
+          <span>{t('Приложить данные приложения (версия, подключение, подписка) — без паролей и ключей')}</span>
         </label>
         {error && <p className="form-error">{error}</p>}
         <div className="modal-actions">
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Отмена
+            {t('Отмена')}
           </Button>
           <Button type="submit" loading={sending} disabled={title.trim().length < 3 || message.trim().length === 0}>
-            Отправить
+            {t('Отправить')}
           </Button>
         </div>
       </form>
@@ -247,6 +259,7 @@ function NewTicket({ onCancel, onCreated }: { onCancel: () => void; onCreated: (
 }
 
 function Thread({ id, onBack }: { id: number; onBack: () => void }) {
+  const t = useT();
   const { markSeen, refresh } = useSupportUnread();
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -271,6 +284,21 @@ function Thread({ id, onBack }: { id: number; onBack: () => void }) {
     const timer = window.setInterval(() => void load(), THREAD_POLL_MS);
     return () => window.clearInterval(timer);
   }, [load]);
+
+  // Rust опрашивает сервер сам: как только в списке появилось более новое сообщение этого обращения,
+  // перечитываем переписку сразу, не дожидаясь своего таймера.
+  const lastLoadedId = useRef(0);
+  useEffect(() => {
+    lastLoadedId.current = ticket?.messages[ticket.messages.length - 1]?.id ?? 0;
+  }, [ticket]);
+  useEffect(
+    () =>
+      onSupportTickets((items) => {
+        const mine = items.find((item) => item.id === id);
+        if (mine?.last_message && mine.last_message.id > lastLoadedId.current) void load();
+      }),
+    [id, load],
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
@@ -298,10 +326,14 @@ function Thread({ id, onBack }: { id: number; onBack: () => void }) {
     <>
       <div className="page-title">
         <button className="link-btn" style={{ padding: 0 }} onClick={onBack}>
-          ← Все обращения
+          {t('← Все обращения')}
         </button>
-        <h1 style={{ marginTop: '0.4rem' }}>{ticket?.title ?? 'Обращение'}</h1>
-        {ticket && <span className={statusChip(ticket.status)}>{TICKET_STATUS_LABEL[ticket.status] ?? ticket.status}</span>}
+        <h1 style={{ marginTop: '0.4rem' }}>{ticket?.title ?? t('Обращение')}</h1>
+        {ticket && (
+          <span className={statusChip(ticket.status)}>
+            {TICKET_STATUS_LABEL[ticket.status] ? t(TICKET_STATUS_LABEL[ticket.status]) : ticket.status}
+          </span>
+        )}
       </div>
 
       {error && (
@@ -319,9 +351,9 @@ function Thread({ id, onBack }: { id: number; onBack: () => void }) {
           <div className="thread">
             {ticket.messages.map((message) => (
               <div key={message.id} className={`bubble ${message.is_from_admin ? 'bubble-admin' : 'bubble-user'}`}>
-                <span className="bubble-author">{message.is_from_admin ? 'Поддержка' : 'Вы'}</span>
+                <span className="bubble-author">{message.is_from_admin ? t('Поддержка') : t('Вы')}</span>
                 <p>{message.message_text}</p>
-                {message.has_media && <span className="muted">К сообщению приложен файл — он виден в боте и кабинете.</span>}
+                {message.has_media && <span className="muted">{t('К сообщению приложен файл — он виден в боте и кабинете.')}</span>}
                 <span className="bubble-time">{formatWhen(message.created_at)}</span>
               </div>
             ))}
@@ -332,15 +364,15 @@ function Thread({ id, onBack }: { id: number; onBack: () => void }) {
 
       {ticket && !closed && !ticket.is_reply_blocked && (
         <form className="card" onSubmit={submit} style={{ gap: '0.6rem' }}>
-          <textarea className="text-input text-area" rows={3} placeholder="Ваш ответ" value={reply} maxLength={3900} onChange={(e) => setReply(e.target.value)} />
+          <textarea className="text-input text-area" rows={3} placeholder={t('Ваш ответ')} value={reply} maxLength={3900} onChange={(e) => setReply(e.target.value)} />
           <Button type="submit" loading={sending} disabled={!reply.trim()}>
-            Отправить
+            {t('Отправить')}
           </Button>
         </form>
       )}
       {ticket && (closed || ticket.is_reply_blocked) && (
         <p className="muted" style={{ margin: '0 0.25rem' }}>
-          {closed ? 'Обращение закрыто. Если вопрос остался, создайте новое.' : 'Ответить в этом обращении сейчас нельзя.'}
+          {closed ? t('Обращение закрыто. Если вопрос остался, создайте новое.') : t('Ответить в этом обращении сейчас нельзя.')}
         </p>
       )}
     </>

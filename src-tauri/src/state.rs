@@ -53,6 +53,34 @@ pub struct BlockStats {
     pub accumulated: u64,
 }
 
+/// Тексты, которые показывает сама оболочка (трей, системные уведомления): язык интерфейса живёт во
+/// фронтенде, поэтому он присылает их сюда при запуске и при смене языка.
+#[derive(Debug, Clone)]
+pub struct NativeLabels {
+    pub support_reply: String,
+    pub tray_open: String,
+    pub tray_disconnect: String,
+    pub tray_quit: String,
+}
+
+impl Default for NativeLabels {
+    fn default() -> Self {
+        Self {
+            support_reply: "Ответ поддержки".to_string(),
+            tray_open: "Открыть Zexor VPN".to_string(),
+            tray_disconnect: "Отключить VPN".to_string(),
+            tray_quit: "Выйти (VPN отключится)".to_string(),
+        }
+    }
+}
+
+/// Пункты меню трея — чтобы переименовать их при смене языка.
+pub struct TrayItems {
+    pub open: tauri::menu::MenuItem<tauri::Wry>,
+    pub disconnect: tauri::menu::MenuItem<tauri::Wry>,
+    pub quit: tauri::menu::MenuItem<tauri::Wry>,
+}
+
 pub struct AppState {
     pub api: ApiClient,
     pub session: Mutex<SessionState>,
@@ -60,6 +88,8 @@ pub struct AppState {
     pub adblock: Mutex<AdblockConfig>,
     pub block_stats: Mutex<BlockStats>,
     pub settings: Mutex<AppSettings>,
+    pub labels: Mutex<NativeLabels>,
+    pub tray_items: Mutex<Option<TrayItems>>,
 }
 
 impl Default for AppState {
@@ -71,6 +101,8 @@ impl Default for AppState {
             adblock: Mutex::new(zexor_vpn_core::adblock::settings::load()),
             block_stats: Mutex::new(BlockStats::default()),
             settings: Mutex::new(zexor_vpn_core::settings::load()),
+            labels: Mutex::new(NativeLabels::default()),
+            tray_items: Mutex::new(None),
         }
     }
 }

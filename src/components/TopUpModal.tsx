@@ -11,6 +11,7 @@ import {
 } from '../lib/cabinet';
 import { errorMessage, openPaymentUrl } from '../lib/commands';
 import { reportAuthLoss } from '../hooks/useAsync';
+import { useT } from '../i18n';
 
 const BALANCE_POLL_MS = 5000;
 const BALANCE_POLL_MAX_MS = 10 * 60 * 1000;
@@ -26,6 +27,7 @@ interface Props {
 
 /** Пополнение: выбрали способ и сумму — страница оплаты сразу открывается в браузере. */
 export default function TopUpModal({ currency, neededMinor, onClose, onPaid }: Props) {
+  const t = useT();
   const [methods, setMethods] = useState<PaymentMethod[] | null>(null);
   const [methodId, setMethodId] = useState('');
   const [optionId, setOptionId] = useState('');
@@ -89,13 +91,16 @@ export default function TopUpModal({ currency, neededMinor, onClose, onPaid }: P
     if (!method) return;
     const major = Number(amount.replace(',', '.'));
     if (!Number.isFinite(major) || major <= 0) {
-      setError('Введите сумму.');
+      setError(t('Введите сумму.'));
       return;
     }
     const minor = Math.round(major * 100);
     if (minor < method.min_amount_kopeks || minor > method.max_amount_kopeks) {
       setError(
-        `Сумма для этого способа: от ${formatMoney(method.min_amount_kopeks, currency)} до ${formatMoney(method.max_amount_kopeks, currency)}.`,
+        t('Сумма для этого способа: от {min} до {max}.', {
+          min: formatMoney(method.min_amount_kopeks, currency),
+          max: formatMoney(method.max_amount_kopeks, currency),
+        }),
       );
       return;
     }
@@ -115,16 +120,16 @@ export default function TopUpModal({ currency, neededMinor, onClose, onPaid }: P
 
   if (waiting) {
     return (
-      <Modal title="Оплата в браузере" onClose={onClose}>
+      <Modal title={t('Оплата в браузере')} onClose={onClose}>
         <p style={{ margin: 0 }}>
-          Страница оплаты открыта в браузере. Оплатите — баланс обновится здесь сам, это занимает до минуты.
+          {t('Страница оплаты открыта в браузере. Оплатите — баланс обновится здесь сам, это занимает до минуты.')}
         </p>
         <div className="empty">
           <span className="spinner spinner-lg" aria-hidden />
         </div>
         <div className="modal-actions">
           <Button variant="ghost" onClick={onClose}>
-            Закрыть
+            {t('Закрыть')}
           </Button>
         </div>
       </Modal>
@@ -134,18 +139,18 @@ export default function TopUpModal({ currency, neededMinor, onClose, onPaid }: P
   const options = method?.options?.filter((o) => o.id) ?? [];
 
   return (
-    <Modal title="Пополнить баланс" onClose={onClose}>
+    <Modal title={t('Пополнить баланс')} onClose={onClose}>
       {!methods && !error && (
         <div className="empty">
           <span className="spinner" aria-hidden />
         </div>
       )}
-      {methods && methods.length === 0 && <p className="muted">Способы оплаты сейчас недоступны. Пополните баланс в кабинете или у бота.</p>}
+      {methods && methods.length === 0 && <p className="muted">{t('Способы оплаты сейчас недоступны. Пополните баланс в кабинете или у бота.')}</p>}
       {methods && methods.length > 0 && (
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {neededMinor ? (
             <p className="muted" style={{ margin: 0 }}>
-              Не хватает {formatMoney(neededMinor, currency)}.
+              {t('Не хватает {amount}.', { amount: formatMoney(neededMinor, currency) })}
             </p>
           ) : null}
           {methods.length > 1 && (
@@ -168,7 +173,7 @@ export default function TopUpModal({ currency, neededMinor, onClose, onPaid }: P
           )}
           {options.length > 0 && (
             <select className="node-select" value={optionId} onChange={(e) => setOptionId(e.target.value)}>
-              <option value="">Способ по умолчанию</option>
+              <option value="">{t('Способ по умолчанию')}</option>
               {options.map((o) => (
                 <option key={String(o.id)} value={String(o.id)}>
                   {String(o.name ?? o.id)}
@@ -179,8 +184,8 @@ export default function TopUpModal({ currency, neededMinor, onClose, onPaid }: P
           <input
             className="text-input"
             inputMode="decimal"
-            aria-label="Сумма"
-            placeholder="Сумма"
+            aria-label={t('Сумма')}
+            placeholder={t('Сумма')}
             value={amount}
             onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ''))}
           />
@@ -196,10 +201,10 @@ export default function TopUpModal({ currency, neededMinor, onClose, onPaid }: P
           {error && <p className="form-error">{error}</p>}
           <div className="modal-actions">
             <Button type="button" variant="ghost" onClick={onClose}>
-              Отмена
+              {t('Отмена')}
             </Button>
             <Button type="submit" loading={busy} disabled={!method}>
-              Перейти к оплате
+              {t('Перейти к оплате')}
             </Button>
           </div>
         </form>

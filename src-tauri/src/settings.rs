@@ -130,6 +130,31 @@ pub fn set_telemetry(
     })
 }
 
+/// Тексты оболочки на языке интерфейса: меню трея и заголовок системного уведомления о новом ответе поддержки.
+#[derive(Debug, serde::Deserialize)]
+pub struct NativeLabelsInput {
+    pub support_reply: String,
+    pub tray_open: String,
+    pub tray_disconnect: String,
+    pub tray_quit: String,
+}
+
+#[tauri::command]
+pub fn set_native_labels(state: State<'_, AppState>, labels: NativeLabelsInput) {
+    {
+        let mut current = state.labels.lock().unwrap();
+        current.support_reply = labels.support_reply;
+        current.tray_open = labels.tray_open.clone();
+        current.tray_disconnect = labels.tray_disconnect.clone();
+        current.tray_quit = labels.tray_quit.clone();
+    }
+    if let Some(items) = state.tray_items.lock().unwrap().as_ref() {
+        let _ = items.open.set_text(&labels.tray_open);
+        let _ = items.disconnect.set_text(&labels.tray_disconnect);
+        let _ = items.quit.set_text(&labels.tray_quit);
+    }
+}
+
 #[tauri::command]
 pub async fn set_routing_mode(
     app: AppHandle,

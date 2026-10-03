@@ -3,11 +3,13 @@
 //!   сервере и, если он изменился, перечитывает подписку (и переподключается, если идёт туннель);
 //! * анонимные замеры доступности серверов из сети пользователя — для карты блокировок в админке.
 
+use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_notification::NotificationExt;
 use zexor_vpn_core::sources::ACCOUNT_SOURCE;
 
 use crate::auth::ensure_valid_access_token;
@@ -136,4 +138,92 @@ pub fn report_pings(app: &AppHandle, results: Vec<(String, Option<u32>)>) {
             tracing::debug!(?err, "замеры доступности не отправлены");
         }
     });
+}
+
+/// Как часто спрашиваем сервер про обращения в поддержку. Таймеры в самой странице (WebView2) замедляются,
+/// когда окно закрыто другими окнами или спрятано в трей, поэтому опрос живёт здесь, в Rust.
+const SUPPORT_POLL_INTERVAL: Duration = Duration::from_secs(20);
+
+/// Событие для интерфейса: свежий список обращений (тот же JSON, что отдаёт `GET /tickets`).
+pub const SUPPORT_EVENT: &str = "support-tickets";
+
+pub fn spawn_support_poll(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(15)).await;
+        // обращение → id последнего уже замеченного ответа поддержки
+        let mut known: HashMap<i64, i64> = HashMap::new();
+        let mut first = true;
+        loop {
+            poll_support(&app, &mut known, &mut first).await;
+            tokio::time::sleep(SUPPORT_POLL_INTERVAL).await;
+        }
+    });
+}
+
+async fn poll_support(app: &AppHandle, known: &mut HashMap<i64, i64>, first: &mut bool) {
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
+    let Ok(token) = ensure_valid_access_token(&state).await else {
+        return;
+    };
+    let Ok(value) = state
+        .api
+        .raw_request(
+            "GET",
+            "/api/cabinet/tickets?page=1&per_page=30",
+            &token,
+            None,
+        )
+        .await
+    else {
+        return;
+    };
+
+    let mut new_reply_titles: Vec<String> = Vec::new();
+    if let Some(items) = value.get("items").and_then(|v| v.as_array()) {
+        for item in items {
+            let Some(id) = item.get("id").and_then(|v| v.as_i64()) else {
+                continue;
+            };
+            let Some(last) = item.get("last_message").filter(|m| !m.is_null()) else {
+                continue;
+            };
+            let from_admin = last
+                .get("is_from_admin")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let Some(last_id) = last.get("id").and_then(|v| v.as_i64()) else {
+                continue;
+            };
+            if !from_admin {
+                continue;
+            }
+            let previous = known.insert(id, last_id);
+            if previous.map_or(true, |p| p < last_id) {
+                new_reply_titles.push(
+                    item.get("title")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string(),
+                );
+            }
+        }
+    }
+
+    // Самый первый опрос только запоминает, что уже есть, — иначе пришла бы пачка старых уведомлений.
+    if !*first && !new_reply_titles.is_empty() {
+        // Если окно приложения сейчас на виду, ответ видно и так — системное уведомление не нужно.
+        let focused = app
+            .get_webview_window("main")
+            .is_some_and(|w| w.is_focused().unwrap_or(false) && w.is_visible().unwrap_or(false));
+        if !focused {
+            let title = state.labels.lock().unwrap().support_reply.clone();
+            for body in new_reply_titles {
+                let _ = app.notification().builder().title(&title).body(body).show();
+            }
+        }
+    }
+    *first = false;
+    let _ = app.emit(SUPPORT_EVENT, value);
 }

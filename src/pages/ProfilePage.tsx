@@ -16,6 +16,7 @@ import {
   verifyEmailChange,
 } from '../lib/cabinet';
 import { appSettings, errorMessage, logout, setTelemetry } from '../lib/commands';
+import { useT } from '../i18n';
 
 type UpdateState =
   | { kind: 'idle' }
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export default function ProfilePage({ onLoggedOut }: Props) {
+  const t = useT();
   const me = useAsync(() => getMe(), []);
   const referral = useAsync(() => getReferral(), []);
   const [telemetry, setTelemetryState] = useState<boolean | null>(null);
@@ -56,7 +58,7 @@ export default function ProfilePage({ onLoggedOut }: Props) {
     try {
       await setCurrency(next);
       await me.reload();
-      setNotice({ tone: 'ok', text: 'Валюта изменена.' });
+      setNotice({ tone: 'ok', text: t('Валюта изменена.') });
     } catch (err) {
       if (!reportAuthLoss(err)) setNotice({ tone: 'error', text: errorMessage(err) });
     }
@@ -68,7 +70,7 @@ export default function ProfilePage({ onLoggedOut }: Props) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
-      setNotice({ tone: 'error', text: 'Не удалось скопировать код.' });
+      setNotice({ tone: 'error', text: t('Не удалось скопировать код.') });
     }
   }
 
@@ -101,13 +103,13 @@ export default function ProfilePage({ onLoggedOut }: Props) {
   }
 
   const user = me.data;
-  const displayName = user?.first_name || user?.username || user?.email || 'Профиль';
+  const displayName = user?.first_name || user?.username || user?.email || t('Профиль');
 
   return (
     <PageShell>
       <div className="page-title">
-        <h1>Профиль</h1>
-        <p>Аккаунт, баланс, рефералы и настройки приложения</p>
+        <h1>{t('Профиль')}</h1>
+        <p>{t('Аккаунт, баланс, рефералы и настройки приложения')}</p>
       </div>
 
       {notice && (
@@ -127,7 +129,7 @@ export default function ProfilePage({ onLoggedOut }: Props) {
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <span className="label">Валюта</span>
+              <span className="label">{t('Валюта')}</span>
               <Segmented
                 value={user.currency}
                 onChange={handleCurrency}
@@ -137,7 +139,7 @@ export default function ProfilePage({ onLoggedOut }: Props) {
                   { value: 'USD', label: '$ USD' },
                 ]}
               />
-              <span className="muted">Сменить валюту можно, пока на балансе в текущей нет средств.</span>
+              <span className="muted">{t('Сменить валюту можно, пока на балансе в текущей нет средств.')}</span>
             </div>
           </>
         ) : me.loading ? (
@@ -152,65 +154,68 @@ export default function ProfilePage({ onLoggedOut }: Props) {
       {user && <EmailCard email={user.email} verified={user.email_verified} onChanged={() => void me.reload()} />}
 
       <section className="card">
-        <span className="label">Реферальная программа</span>
+        <span className="label">{t('Реферальная программа')}</span>
         {referral.data ? (
           <>
             <div className="copy-box">
               <span>{referral.data.referral_code}</span>
               <Button variant="secondary" onClick={() => void handleCopyCode(referral.data!.referral_code)}>
-                {copied ? 'Скопировано' : 'Копировать'}
+                {copied ? t('Скопировано') : t('Копировать')}
               </Button>
             </div>
             <div className="tile-grid">
               <div className="tile">
-                <span className="label">Рефералов</span>
+                <span className="label">{t('Рефералов')}</span>
                 <span className="tile-value">
                   {referral.data.total_referrals}
-                  <span className="muted"> · активных {referral.data.active_referrals}</span>
+                  <span className="muted"> · {t('активных {n}', { n: referral.data.active_referrals })}</span>
                 </span>
               </div>
               <div className="tile">
-                <span className="label">Заработано</span>
+                <span className="label">{t('Заработано')}</span>
                 <span className="tile-value">
                   {formatMoney(referral.data.total_earnings_kopeks, user?.currency ?? 'RUB')}
                 </span>
-                <span className="muted">комиссия {referral.data.commission_percent}%</span>
+                <span className="muted">{t('комиссия {percent}%', { percent: referral.data.commission_percent })}</span>
               </div>
             </div>
-            <span className="muted">Друг указывает ваш код при регистрации — вы получаете процент с его пополнений.</span>
+            <span className="muted">{t('Друг указывает ваш код при регистрации — вы получаете процент с его пополнений.')}</span>
           </>
         ) : referral.loading ? (
           <div className="empty">
             <span className="spinner" aria-hidden />
           </div>
         ) : (
-          <p className="muted">{referral.error ?? 'Реферальная программа недоступна.'}</p>
+          <p className="muted">{referral.error ?? t('Реферальная программа недоступна.')}</p>
         )}
       </section>
 
       <section className="card">
-        <span className="label">Приложение</span>
+        <span className="label">{t('Приложение')}</span>
         <div className="row">
-          <span>Обновления{version ? ` · v${version}` : ''}</span>
+          <span>
+            {t('Обновления')}
+            {version ? ` · v${version}` : ''}
+          </span>
           <Button
             variant="secondary"
             loading={updateState.kind === 'checking' || updateState.kind === 'installing'}
             onClick={handleCheckUpdate}
           >
-            Проверить
+            {t('Проверить')}
           </Button>
         </div>
-        {updateState.kind === 'up-to-date' && <p className="muted">Установлена последняя версия.</p>}
+        {updateState.kind === 'up-to-date' && <p className="muted">{t('Установлена последняя версия.')}</p>}
         {updateState.kind === 'error' && <p className="form-error">{updateState.message}</p>}
         {updateState.kind === 'available' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            <p style={{ margin: 0 }}>Доступна версия {updateState.update.version}.</p>
-            <Button onClick={() => void handleInstallUpdate(updateState.update)}>Установить и перезапустить</Button>
+            <p style={{ margin: 0 }}>{t('Доступна версия {version}.', { version: updateState.update.version })}</p>
+            <Button onClick={() => void handleInstallUpdate(updateState.update)}>{t('Установить и перезапустить')}</Button>
           </div>
         )}
         <Toggle
-          label="Статистика доступности серверов"
-          hint="Раз в полчаса приложение отправляет время отклика серверов Zexor и название вашей сети (оператора) — без IP-адреса и без привязки к аккаунту. Это помогает быстрее находить блокировки."
+          label={t('Статистика доступности серверов')}
+          hint={t('Раз в полчаса приложение отправляет время отклика серверов Zexor и название вашей сети (оператора) — без IP-адреса и без привязки к аккаунту. Это помогает быстрее находить блокировки.')}
           checked={telemetry ?? true}
           disabled={telemetry === null}
           onChange={(enabled) => {
@@ -219,13 +224,13 @@ export default function ProfilePage({ onLoggedOut }: Props) {
           }}
         />
         <p className="muted" style={{ margin: 0 }}>
-          Закрытие окна не отключает VPN — приложение остаётся в трее. Выйти полностью можно из меню значка в трее.
+          {t('Закрытие окна не отключает VPN — приложение остаётся в трее. Выйти полностью можно из меню значка в трее.')}
         </p>
       </section>
 
       <section className="card">
         <Button variant="ghost" onClick={() => void handleLogout()}>
-          Выйти из аккаунта
+          {t('Выйти из аккаунта')}
         </Button>
       </section>
     </PageShell>
@@ -241,6 +246,7 @@ function EmailCard({
   verified: boolean;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [step, setStep] = useState<'view' | 'enter' | 'code'>('view');
   const [value, setValue] = useState('');
   const [code, setCode] = useState('');
@@ -273,15 +279,15 @@ function EmailCard({
     <section className="card">
       <div className="row">
         <div>
-          <span className="label">Почта</span>
+          <span className="label">{t('Почта')}</span>
           <div className="tile-value" style={{ marginTop: '0.3rem', fontSize: '1rem' }}>
-            {email ?? 'не указана'}
+            {email ?? t('не указана')}
           </div>
-          {email && !verified && <span className="chip chip-warn">не подтверждена</span>}
+          {email && !verified && <span className="chip chip-warn">{t('не подтверждена')}</span>}
         </div>
         {step === 'view' && (
           <Button variant="secondary" onClick={() => setStep('enter')}>
-            {email ? 'Изменить' : 'Добавить'}
+            {email ? t('Изменить') : t('Добавить')}
           </Button>
         )}
       </div>
@@ -291,19 +297,19 @@ function EmailCard({
             <input
               className="text-input"
               type="email"
-              placeholder="Новый адрес почты"
+              placeholder={t('Новый адрес почты')}
               value={value}
               autoFocus
               onChange={(e) => setValue(e.target.value)}
             />
           ) : (
             <>
-              <span className="muted">Мы отправили 6-значный код на {value}.</span>
+              <span className="muted">{t('Мы отправили 6-значный код на {email}.', { email: value })}</span>
               <input
                 className="text-input"
                 inputMode="numeric"
                 maxLength={6}
-                placeholder="Код из письма"
+                placeholder={t('Код из письма')}
                 value={code}
                 autoFocus
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
@@ -313,10 +319,10 @@ function EmailCard({
           {error && <p className="form-error">{error}</p>}
           <div className="modal-actions">
             <Button type="button" variant="ghost" onClick={() => setStep('view')}>
-              Отмена
+              {t('Отмена')}
             </Button>
             <Button type="submit" loading={loading} disabled={step === 'enter' ? !value.includes('@') : code.length !== 6}>
-              {step === 'enter' ? 'Отправить код' : 'Подтвердить'}
+              {step === 'enter' ? t('Отправить код') : t('Подтвердить')}
             </Button>
           </div>
         </form>

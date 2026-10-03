@@ -1,20 +1,21 @@
 import type { ReactNode } from 'react';
+import { useT } from '../i18n';
 import { ChatIcon, HomeIcon, ShieldIcon, SparklesIcon, UserIcon } from './Icons';
 
 export type Tab = 'home' | 'subscription' | 'adblock' | 'support' | 'profile' | 'login';
 
 const ITEMS: { tab: Tab; label: string; icon: ReactNode }[] = [
-  { tab: 'home', label: 'Главная', icon: <HomeIcon /> },
-  { tab: 'subscription', label: 'Подписка', icon: <SparklesIcon /> },
+  { tab: 'home', label: 'Главная', icon: <HomeIcon /> }, // i18n-key
+  { tab: 'subscription', label: 'Подписка', icon: <SparklesIcon /> }, // i18n-key
   { tab: 'adblock', label: 'MyBlock', icon: <ShieldIcon /> },
-  { tab: 'support', label: 'Поддержка', icon: <ChatIcon /> },
-  { tab: 'profile', label: 'Профиль', icon: <UserIcon /> },
+  { tab: 'support', label: 'Поддержка', icon: <ChatIcon /> }, // i18n-key
+  { tab: 'profile', label: 'Профиль', icon: <UserIcon /> }, // i18n-key
 ];
 
 /** Без аккаунта доступны только главная (своя подписка) и вход. */
 const GUEST_ITEMS: { tab: Tab; label: string; icon: ReactNode }[] = [
-  { tab: 'home', label: 'Главная', icon: <HomeIcon /> },
-  { tab: 'login', label: 'Вход', icon: <UserIcon /> },
+  { tab: 'home', label: 'Главная', icon: <HomeIcon /> }, // i18n-key
+  { tab: 'login', label: 'Вход', icon: <UserIcon /> }, // i18n-key
 ];
 
 interface Props {
@@ -27,8 +28,9 @@ interface Props {
 }
 
 export default function BottomNav({ active, onChange, dots, guest }: Props) {
+  const t = useT();
   return (
-    <nav className="bottom-nav" aria-label="Разделы">
+    <nav className="bottom-nav" aria-label={t('Разделы')}>
       {(guest ? GUEST_ITEMS : ITEMS).map((item) => (
         <button
           key={item.tab}
@@ -39,9 +41,9 @@ export default function BottomNav({ active, onChange, dots, guest }: Props) {
         >
           <span className="nav-icon">
             {item.icon}
-            {dots?.[item.tab] && active !== item.tab && <span className="nav-dot" aria-label="Есть новые" />}
+            {dots?.[item.tab] && active !== item.tab && <span className="nav-dot" aria-label={t('Есть новые')} />}
           </span>
-          {item.label}
+          {t(item.label)}
         </button>
       ))}
     </nav>

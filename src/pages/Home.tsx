@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import { currentLocale, useT } from '../i18n';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import PageShell from '../components/PageShell';
@@ -59,7 +60,7 @@ function writeSelection(sourceId: string, value: string) {
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('ru-RU');
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(currentLocale());
 }
 
 interface Props {
@@ -72,6 +73,7 @@ interface Props {
 }
 
 export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, guest = false }: Props) {
+  const t = useT();
   const [sources, setSources] = useState<SourceSummary[]>([]);
   // Гость начинает без подписки: подписка аккаунта ему недоступна, свою он добавляет сам.
   const [sourceId, setSourceId] = useState<string>(guest ? '' : ACCOUNT_SOURCE);
@@ -239,10 +241,14 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
   }, []);
 
   async function connectAuto() {
-    setAutoInfo('Подбираем сервер…');
+    setAutoInfo(t('Подбираем сервер…'));
     const result = await autoConnect(sourceId);
     setStatus({ connected: true, node_remark: result.remark, source_id: sourceId, auto: true });
-    setAutoInfo(result.ms === null ? 'Авто: сервер выбирается постоянно по доступности и скорости' : `Авто выбрал: ${result.remark} · ${result.ms} мс`);
+    setAutoInfo(
+      result.ms === null
+        ? t('Авто: сервер выбирается постоянно по доступности и скорости')
+        : t('Авто выбрал: {server} · {ms} мс', { server: result.remark, ms: result.ms }),
+    );
   }
 
   async function handleToggleConnection() {
@@ -258,7 +264,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
           await connectAuto();
         } else {
           if (!selectedNode) {
-            setError('Нет доступных серверов в подписке.');
+            setError(t('Нет доступных серверов в подписке.'));
             return;
           }
           await connect(selectedNode, sourceId);
@@ -356,8 +362,8 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
 
   async function handleRemoveSource() {
     if (isAccount) return;
-    const name = sources.find((s) => s.id === sourceId)?.name ?? 'подписку';
-    if (!window.confirm(`Удалить «${name}» из приложения?`)) return;
+    const name = sources.find((s) => s.id === sourceId)?.name ?? t('подписку');
+    if (!window.confirm(t('Удалить «{name}» из приложения?', { name }))) return;
     try {
       await removeSource(sourceId);
       const rest = visibleSources(await listSources());
@@ -397,14 +403,19 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
         <>
           <button
             className={`icon-btn ${refreshing ? 'icon-btn-spin' : ''}`}
-            aria-label="Обновить"
-            title="Обновить подписку и список серверов"
+            aria-label={t('Обновить')}
+            title={t('Обновить подписку и список серверов')}
             disabled={refreshing}
             onClick={() => void refreshAll()}
           >
             <RefreshIcon />
           </button>
-          <button className="icon-btn" aria-label="Добавить подписку" title="Добавить свою подписку" onClick={() => setAddOpen(true)}>
+          <button
+            className="icon-btn"
+            aria-label={t('Добавить подписку')}
+            title={t('Добавить свою подписку')}
+            onClick={() => setAddOpen(true)}
+          >
             <PlusIcon />
           </button>
         </>
@@ -413,9 +424,9 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
       {!guest && sources.length <= 1 && !hintHidden && (
         <div className="hint-bar" role="note">
           <span>
-            Нажмите <strong>+</strong> в правом верхнем углу, чтобы добавить другую подписку
+            {t('Нажмите + в правом верхнем углу, чтобы добавить другую подписку')}
           </span>
-          <button className="hint-close" aria-label="Скрыть подсказку" onClick={hideHint}>
+          <button className="hint-close" aria-label={t('Скрыть подсказку')} onClick={hideHint}>
             ✕
           </button>
         </div>
@@ -424,7 +435,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
       {sources.length > 1 && (
         <select
           className="node-select"
-          aria-label="Подписка"
+          aria-label={t('Подписка')}
           value={sourceId}
           disabled={busy}
           onChange={(e) => setSourceId(e.target.value)}
@@ -439,14 +450,14 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
 
       {guest && sources.length === 0 ? (
         <section className="card card-glow">
-          <span className="label">Своя подписка</span>
-          <p style={{ margin: 0 }}>Добавьте ссылку подписки любого сервиса — её серверы появятся здесь, и можно подключаться.</p>
-          <Button onClick={() => setAddOpen(true)}>Добавить подписку</Button>
+          <span className="label">{t('Своя подписка')}</span>
+          <p style={{ margin: 0 }}>{t('Добавьте ссылку подписки любого сервиса — её серверы появятся здесь, и можно подключаться.')}</p>
+          <Button onClick={() => setAddOpen(true)}>{t('Добавить подписку')}</Button>
           <p className="muted" style={{ margin: 0 }}>
-            Хотите VPN Zexor? Откройте вкладку «Вход», войдите или зарегистрируйтесь — и сервис Zexor станет доступен.
+            {t('Хотите VPN Zexor? Откройте вкладку «Вход», войдите или зарегистрируйтесь — и сервис Zexor станет доступен.')}
           </p>
           <Button variant="secondary" onClick={onOpenSubscription}>
-            Войти или зарегистрироваться
+            {t('Войти или зарегистрироваться')}
           </Button>
         </section>
       ) : (
@@ -456,13 +467,18 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
           <div className="row" style={{ gap: '0.5rem' }}>
             {canSwitchProtocol && <ProtocolMenu value={activeProtocol} disabled={busy} onChange={handleProtocolChange} />}
             {!isAccount && (
-              <button className="icon-btn" aria-label="Удалить подписку" title="Удалить подписку" onClick={handleRemoveSource}>
+              <button
+                className="icon-btn"
+                aria-label={t('Удалить подписку')}
+                title={t('Удалить подписку')}
+                onClick={handleRemoveSource}
+              >
                 <TrashIcon />
               </button>
             )}
           </div>
         </div>
-        {canSwitchProtocol && activeProtocol === 'wireguard' && <p className="warn-text">WireGuard не работает в России и Иране</p>}
+        {canSwitchProtocol && activeProtocol === 'wireguard' && <p className="warn-text">{t('WireGuard не работает в России и Иране')}</p>}
 
         <div className="picker-row">
           <div className="picker-main">
@@ -482,10 +498,10 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
             className={`auto-btn ${autoOn ? 'auto-btn-on' : ''}`}
             aria-pressed={autoOn}
             disabled={busy || !settings}
-            title="Клиент сам выбирает лучший сервер"
+            title={t('Клиент сам выбирает лучший сервер')}
             onClick={() => void handleAutoToggle()}
           >
-            <BoltIcon /> Авто
+            <BoltIcon /> {t('Авто')}
           </button>
         </div>
         <Button
@@ -495,7 +511,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
           onClick={handleToggleConnection}
           className="connect-btn"
         >
-          {status.connected ? 'Отключиться' : 'Подключиться'}
+          {status.connected ? t('Отключиться') : t('Подключиться')}
         </Button>
 
         {autoInfo && (status.connected || busy) && <p className="muted" style={{ margin: 0 }}>{autoInfo}</p>}
@@ -509,11 +525,11 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
             <>
               <div className="row">
                 <div>
-                  <span className="label">Расход трафика</span>
+                  <span className="label">{t('Расход трафика')}</span>
                   <div className="row" style={{ justifyContent: 'flex-start', marginTop: '0.4rem' }}>
-                    {sub.is_trial && <span className="chip">Пробный период</span>}
-                    {sub.is_grace_period && <span className="chip chip-warn">Грейс</span>}
-                    {sub.is_expired && <span className="chip chip-danger">Истекла</span>}
+                    {sub.is_trial && <span className="chip">{t('Пробный период')}</span>}
+                    {sub.is_grace_period && <span className="chip chip-warn">{t('Грейс')}</span>}
+                    {sub.is_expired && <span className="chip chip-danger">{t('Истекла')}</span>}
                   </div>
                 </div>
                 <div className="big-number">
@@ -523,24 +539,28 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
               </div>
               {sub.traffic_limit_gb > 0 && <ProgressBar percent={sub.traffic_used_percent} />}
               <p className="muted" style={{ margin: 0 }}>
-                {sub.traffic_used_gb.toFixed(1)} ГБ{sub.traffic_limit_gb > 0 ? ` из ${sub.traffic_limit_gb} ГБ` : ' · безлимит'}
+                {sub.traffic_limit_gb > 0
+                  ? t('{used} ГБ из {limit} ГБ', { used: sub.traffic_used_gb.toFixed(1), limit: sub.traffic_limit_gb })
+                  : t('{used} ГБ · безлимит', { used: sub.traffic_used_gb.toFixed(1) })}
               </p>
               <div className="tile-grid">
                 <div className="tile">
-                  <span className="label">Тариф</span>
-                  <span className="tile-value">{sub.tariff_name ?? 'Подписка'}</span>
-                  <span className="muted">до {formatDate(sub.end_date)}</span>
+                  <span className="label">{t('Тариф')}</span>
+                  <span className="tile-value">{sub.tariff_name ?? t('Подписка')}</span>
+                  <span className="muted">{t('до {date}', { date: formatDate(sub.end_date) })}</span>
                 </div>
                 <div className={`tile ${sub.days_left <= 3 ? 'tile-warn' : ''}`}>
-                  <span className="label">Осталось</span>
-                  <span className="tile-value">{sub.days_left > 0 ? `${sub.days_left} дн.` : sub.time_left_display || '0 дн.'}</span>
+                  <span className="label">{t('Осталось')}</span>
+                  <span className="tile-value">{sub.days_left > 0 ? t('{n} дн.', { n: sub.days_left }) : sub.time_left_display || t('0 дн.')}</span>
                   <span className="muted">
-                    устройств: {devices.data ? `${devices.data.total} из ${sub.device_limit}` : sub.device_limit}
+                    {t('устройств: {count}', {
+                      count: devices.data ? t('{used} из {limit}', { used: devices.data.total, limit: sub.device_limit }) : sub.device_limit,
+                    })}
                   </span>
                 </div>
               </div>
               <Button variant="secondary" onClick={onOpenSubscription}>
-                Управление подпиской
+                {t('Управление подпиской')}
               </Button>
             </>
           ) : subscription.loading ? (
@@ -552,8 +572,8 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
           ) : (
             !hasSubscription && (
               <>
-                <p className="empty">У аккаунта нет активной подписки.</p>
-                <Button onClick={() => void openExternal(`${CABINET_URL}/subscription`)}>Оформить подписку</Button>
+                <p className="empty">{t('У аккаунта нет активной подписки.')}</p>
+                <Button onClick={() => void openExternal(`${CABINET_URL}/subscription`)}>{t('Оформить подписку')}</Button>
               </>
             )
           )}
@@ -562,31 +582,32 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
 
       <section className="card">
         <div className="row">
-          <span className="label">Маршрутизация</span>
+          <span className="label">{t('Маршрутизация')}</span>
           {settings && settings.routing_apps.length > 0 && (
-            <span className="chip">{settings.routing_mode === 'only' ? 'Только ' : 'Кроме '}{settings.routing_apps.length}</span>
+            <span className="chip">
+              {settings.routing_mode === 'only' ? t('Только') : t('Кроме')} {settings.routing_apps.length}
+            </span>
           )}
         </div>
         <p className="muted" style={{ margin: 0 }}>
-          Выберите, какие приложения идут через VPN, а какие — напрямую, в обход него.
+          {t('Выберите, какие приложения идут через VPN, а какие — напрямую, в обход него.')}
         </p>
         <Button variant="secondary" onClick={onOpenRouting}>
-          Настроить маршрутизацию
+          {t('Настроить маршрутизацию')}
         </Button>
       </section>
 
       {adminPrompt && (
-        <Modal title="Нужны права администратора" onClose={() => setAdminPrompt(false)}>
+        <Modal title={t('Нужны права администратора')} onClose={() => setAdminPrompt(false)}>
           <p className="muted" style={{ margin: 0 }}>
-            Режиму TUN нужно создать виртуальный сетевой адаптер — для этого Windows требует права администратора. Перезапустить
-            приложение с правами администратора? VPN отключится и включится заново после запуска.
+            {t('Режиму TUN нужно создать виртуальный сетевой адаптер — для этого Windows требует права администратора. Перезапустить приложение с правами администратора? VPN отключится и включится заново после запуска.')}
           </p>
           <div className="modal-actions">
             <Button type="button" variant="ghost" onClick={() => setAdminPrompt(false)}>
-              Отмена
+              {t('Отмена')}
             </Button>
             <Button type="button" onClick={() => void handleRestartAsAdmin()}>
-              Перезапустить
+              {t('Перезапустить')}
             </Button>
           </div>
         </Modal>
@@ -598,6 +619,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
 }
 
 function AddSourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: (s: SourceSummary) => void }) {
+  const t = useT();
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -617,14 +639,14 @@ function AddSourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: (s
   }
 
   return (
-    <Modal title="Добавить подписку" onClose={onClose}>
+    <Modal title={t('Добавить подписку')} onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <p className="muted" style={{ margin: 0 }}>
-          Вставьте ссылку подписки другого сервиса — её серверы появятся в этом приложении рядом с вашими.
+          {t('Вставьте ссылку подписки другого сервиса — её серверы появятся в этом приложении рядом с вашими.')}
         </p>
         <input
           className="text-input"
-          placeholder="Название (необязательно)"
+          placeholder={t('Название (необязательно)')}
           value={name}
           maxLength={40}
           onChange={(e) => setName(e.target.value)}
@@ -639,10 +661,10 @@ function AddSourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: (s
         {error && <p className="form-error">{error}</p>}
         <div className="modal-actions">
           <Button type="button" variant="ghost" onClick={onClose}>
-            Отмена
+            {t('Отмена')}
           </Button>
           <Button type="submit" loading={loading} disabled={!url.trim()}>
-            Добавить
+            {t('Добавить')}
           </Button>
         </div>
       </form>

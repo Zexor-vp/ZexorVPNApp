@@ -11,7 +11,8 @@ import SupportPage from './pages/SupportPage';
 import { setAuthLostHandler } from './hooks/useAsync';
 import { useAutoUpdate, type UpdatePhase } from './hooks/useAutoUpdate';
 import { SupportUnreadProvider, useSupportUnread } from './hooks/useSupportUnread';
-import { currentSession } from './lib/commands';
+import { useT } from './i18n';
+import { currentSession, setNativeLabels } from './lib/commands';
 
 /** Раз в час обновляем подписку: срок, трафик, список серверов. */
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
@@ -20,12 +21,23 @@ const REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 type Screen = { kind: 'loading' } | { kind: 'guest' } | { kind: 'app' };
 
 export default function App() {
+  const t = useT();
   const [screen, setScreen] = useState<Screen>({ kind: 'loading' });
   const [tab, setTab] = useState<Tab | 'routing'>('home');
   const [refreshKey, setRefreshKey] = useState(0);
   const updatePhase = useAutoUpdate();
 
   // Сессия потеряна или пользователь вышел: остаёмся в приложении как гость, на вкладке входа.
+  // Меню трея и системные уведомления рисует оболочка (Rust) — отдаём ей тексты на выбранном языке.
+  useEffect(() => {
+    void setNativeLabels({
+      support_reply: t('Ответ поддержки'),
+      tray_open: t('Открыть Zexor VPN'),
+      tray_disconnect: t('Отключить VPN'),
+      tray_quit: t('Выйти (VPN отключится)'),
+    }).catch(() => undefined);
+  }, [t]);
+
   const goToLogin = useCallback(() => {
     setTab('login');
     setScreen({ kind: 'guest' });

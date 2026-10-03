@@ -14,17 +14,19 @@ import {
   type AppSettings,
   type RoutingMode,
 } from '../lib/commands';
+import { useT } from '../i18n';
 
 interface Props {
   onBack: () => void;
 }
 
 const MODE_HINT: Record<RoutingMode, string> = {
-  exclude: 'Весь трафик идёт через VPN. Приложения из списка ходят напрямую, минуя VPN.',
-  only: 'Через VPN идут только приложения из списка. Всё остальное ходит напрямую.',
+  exclude: 'Весь трафик идёт через VPN. Приложения из списка ходят напрямую, минуя VPN.', // i18n-key
+  only: 'Через VPN идут только приложения из списка. Всё остальное ходит напрямую.', // i18n-key
 };
 
 export default function RoutingPage({ onBack }: Props) {
+  const t = useT();
   const [state, setState] = useState<AppSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [value, setValue] = useState('');
@@ -72,7 +74,7 @@ export default function RoutingPage({ onBack }: Props) {
       const picked = await open({
         multiple: false,
         directory: false,
-        filters: [{ name: 'Программы', extensions: ['exe'] }],
+        filters: [{ name: t('Программы'), extensions: ['exe'] }],
       });
       if (typeof picked === 'string') await add(picked);
     } catch (err) {
@@ -99,13 +101,13 @@ export default function RoutingPage({ onBack }: Props) {
     <PageShell
       actions={
         <button className="link-btn back-btn" onClick={onBack}>
-          ← Назад
+          {t('← Назад')}
         </button>
       }
     >
       <div className="page-title">
-        <h1>Маршрутизация</h1>
-        <p>Какие приложения идут через VPN, а какие — напрямую</p>
+        <h1>{t('Маршрутизация')}</h1>
+        <p>{t('Какие приложения идут через VPN, а какие — напрямую')}</p>
       </div>
 
       {error && (
@@ -119,48 +121,47 @@ export default function RoutingPage({ onBack }: Props) {
           value={mode}
           disabled={!state}
           options={[
-            { value: 'exclude', label: 'Кроме выбранных' },
-            { value: 'only', label: 'Только выбранные' },
+            { value: 'exclude', label: t('Кроме выбранных') },
+            { value: 'only', label: t('Только выбранные') },
           ]}
           onChange={(next) => void apply(() => setRoutingMode(next)).catch(() => undefined)}
         />
         <p className="muted" style={{ margin: 0 }}>
-          {MODE_HINT[mode]}
+          {t(MODE_HINT[mode])}
         </p>
         {state && state.tunnel_mode === 'proxy' && (
           <p className="muted" style={{ margin: 0 }}>
-            В режиме Proxy правила действуют на программы, которые используют системный прокси (браузеры и большинство
-            приложений). Для игр, лаунчеров и остального включите режим TUN на главном экране.
+            {t('В режиме Proxy правила действуют на программы, которые используют системный прокси (браузеры и большинство приложений). Для игр, лаунчеров и остального включите режим TUN на главном экране.')}
           </p>
         )}
       </section>
 
       <section className="card">
-        <span className="label">{mode === 'exclude' ? 'Напрямую, без VPN' : 'Только через VPN'}</span>
+        <span className="label">{mode === 'exclude' ? t('Напрямую, без VPN') : t('Только через VPN')}</span>
         <form className="row" onSubmit={submit} style={{ gap: '0.5rem' }}>
           <input
             className="text-input"
             placeholder="chrome.exe"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            aria-label="Имя приложения"
+            aria-label={t('Имя приложения')}
           />
           <Button type="submit" variant="secondary" loading={adding} disabled={!value.trim()}>
-            Добавить
+            {t('Добавить')}
           </Button>
         </form>
         <div className="row" style={{ gap: '0.5rem' }}>
           <Button variant="ghost" onClick={() => void browse()}>
-            Выбрать файл…
+            {t('Выбрать файл…')}
           </Button>
           <Button variant="ghost" loading={loadingRunning} onClick={() => void showRunning()}>
-            Запущенные программы
+            {t('Запущенные программы')}
           </Button>
         </div>
 
         {running && (
-          <div className="chip-cloud" aria-label="Запущенные программы">
-            {suggestions.length === 0 && <span className="muted">Нет новых программ для добавления</span>}
+          <div className="chip-cloud" aria-label={t('Запущенные программы')}>
+            {suggestions.length === 0 && <span className="muted">{t('Нет новых программ для добавления')}</span>}
             {suggestions.map((name) => (
               <button key={name} type="button" className="chip chip-button" onClick={() => void add(name)}>
                 + {name}
@@ -176,7 +177,7 @@ export default function RoutingPage({ onBack }: Props) {
                 <span>{app}</span>
                 <button
                   className="icon-btn"
-                  aria-label={`Убрать ${app}`}
+                  aria-label={t('Убрать {name}', { name: app })}
                   onClick={() => void apply(() => removeRoutingApp(app)).catch(() => undefined)}
                 >
                   <TrashIcon />
@@ -187,14 +188,14 @@ export default function RoutingPage({ onBack }: Props) {
         ) : (
           <p className="muted" style={{ margin: 0 }}>
             {mode === 'only'
-              ? 'Список пуст — пока через VPN идёт всё. Добавьте приложения, чтобы ограничить VPN только ими.'
-              : 'Список пуст — все приложения идут через VPN.'}
+              ? t('Список пуст — пока через VPN идёт всё. Добавьте приложения, чтобы ограничить VPN только ими.')
+              : t('Список пуст — все приложения идут через VPN.')}
           </p>
         )}
       </section>
 
       <p className="muted" style={{ margin: '0 0.25rem' }}>
-        Если VPN подключён, при изменении списка он переподключится на пару секунд, чтобы правила вступили в силу.
+        {t('Если VPN подключён, при изменении списка он переподключится на пару секунд, чтобы правила вступили в силу.')}
       </p>
     </PageShell>
   );

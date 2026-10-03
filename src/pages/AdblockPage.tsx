@@ -15,10 +15,12 @@ import {
   type AdblockState,
   type SessionStats,
 } from '../lib/commands';
+import { useT } from '../i18n';
 
 const STATS_POLL_MS = 2000;
 
 export default function AdblockPage() {
+  const t = useT();
   const [state, setState] = useState<AdblockState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<SessionStats>({ blocked: 0, active: false });
@@ -59,7 +61,7 @@ export default function AdblockPage() {
     <PageShell>
       <div className="page-title">
         <h1>MyBlock</h1>
-        <p>Блокировщик рекламы: работает локально и не зависит от сервера</p>
+        <p>{t('Блокировщик рекламы: работает локально и не зависит от сервера')}</p>
       </div>
 
       {error && (
@@ -70,29 +72,29 @@ export default function AdblockPage() {
 
       <section className="card card-glow">
         <Toggle
-          label="Блокировать рекламу"
-          hint="Рекламные домены отсекаются прямо в приложении, трафик до них не доходит"
+          label={t('Блокировать рекламу')}
+          hint={t('Рекламные домены отсекаются прямо в приложении, трафик до них не доходит')}
           checked={state?.enabled ?? true}
           disabled={!state}
           onChange={(enabled) => void apply(() => setAdblockEnabled(enabled)).catch(() => undefined)}
         />
         <div className="stat-box">
-          <span className="label">Заблокировано за сессию</span>
+          <span className="label">{t('Заблокировано за сессию')}</span>
           <span className="big-number">{stats.blocked.toLocaleString('ru-RU')}</span>
           <div className="row">
             <span className="muted">
-              {stats.active ? 'Считаем рекламные запросы, пока VPN подключён' : 'Подключитесь к VPN — тогда начнём считать'}
+              {stats.active ? t('Считаем рекламные запросы, пока VPN подключён') : t('Подключитесь к VPN — тогда начнём считать')}
             </span>
             <button className="link-btn" onClick={() => void resetAdblockSessionStats().then(setStats)}>
-              Сбросить
+              {t('Сбросить')}
             </button>
           </div>
         </div>
       </section>
 
       <DomainList
-        title="Всегда блокировать"
-        hint="Добавьте домен, который не попал в списки, например ads.example.com"
+        title={t('Всегда блокировать')}
+        hint={t('Добавьте домен, который не попал в списки, например ads.example.com')}
         kind="block"
         items={state?.custom_block ?? []}
         onAdd={(domain) => apply(() => addAdblockDomain('block', domain))}
@@ -100,8 +102,8 @@ export default function AdblockPage() {
       />
 
       <DomainList
-        title="Никогда не блокировать"
-        hint="Если сайт сломался из-за блокировщика, добавьте его сюда — он будет работать как обычно"
+        title={t('Никогда не блокировать')}
+        hint={t('Если сайт сломался из-за блокировщика, добавьте его сюда — он будет работать как обычно')}
         kind="allow"
         items={state?.custom_allow ?? []}
         onAdd={(domain) => apply(() => addAdblockDomain('allow', domain))}
@@ -109,7 +111,7 @@ export default function AdblockPage() {
       />
 
       <p className="muted" style={{ margin: '0 0.25rem' }}>
-        Если VPN подключён, при изменении настроек он переподключится на пару секунд, чтобы правила вступили в силу.
+        {t('Если VPN подключён, при изменении настроек он переподключится на пару секунд, чтобы правила вступили в силу.')}
       </p>
     </PageShell>
   );
@@ -125,6 +127,7 @@ interface ListProps {
 }
 
 function DomainList({ title, hint, kind, items, onAdd, onRemove }: ListProps) {
+  const t = useT();
   const [value, setValue] = useState('');
   const [adding, setAdding] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -159,7 +162,7 @@ function DomainList({ title, hint, kind, items, onAdd, onRemove }: ListProps) {
           aria-label={title}
         />
         <Button type="submit" variant="secondary" loading={adding} disabled={!value.trim()}>
-          Добавить
+          {t('Добавить')}
         </Button>
       </form>
       {localError && <p className="form-error">{localError}</p>}
@@ -168,7 +171,7 @@ function DomainList({ title, hint, kind, items, onAdd, onRemove }: ListProps) {
           {items.map((domain) => (
             <div key={domain} className="list-item">
               <span>{domain}</span>
-              <button className="icon-btn" aria-label={`Убрать ${domain}`} onClick={() => onRemove(domain)}>
+              <button className="icon-btn" aria-label={t('Убрать {name}', { name: domain })} onClick={() => onRemove(domain)}>
                 <TrashIcon />
               </button>
             </div>

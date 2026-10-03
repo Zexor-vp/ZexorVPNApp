@@ -1,6 +1,6 @@
 [package]
 name = "zexor-vpn-desktop"
-version = "0.3.3"
+version = "0.3.4"
 description = "Zexor VPN desktop client for Windows"
 edition = "2021"
 rust-version = "1.77"

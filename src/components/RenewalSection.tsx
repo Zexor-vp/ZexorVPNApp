@@ -3,6 +3,7 @@ import Button from './Button';
 import Modal from './Modal';
 import TopUpModal from './TopUpModal';
 import { reportAuthLoss } from '../hooks/useAsync';
+import { useT } from '../i18n';
 import {
   balanceFromOptions,
   formatMoney,
@@ -33,7 +34,7 @@ function ConfirmDialog({
   neededMinor,
   working,
   error,
-  confirmLabel = 'Подтвердить',
+  confirmLabel,
   onConfirm,
   onClose,
   onToppedUp,
@@ -49,22 +50,23 @@ function ConfirmDialog({
   onClose: () => void;
   onToppedUp: () => void;
 }) {
+  const t = useT();
   const [topUp, setTopUp] = useState(false);
   return (
     <>
       <Modal title={title} onClose={() => !working && onClose()}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>{body}</div>
-        {neededMinor > 0 && <p className="form-error">Не хватает {formatMoney(neededMinor, currency)} на балансе.</p>}
+        {neededMinor > 0 && <p className="form-error">{t('Не хватает {amount} на балансе.', { amount: formatMoney(neededMinor, currency) })}</p>}
         {error && <p className="form-error">{error}</p>}
         <div className="modal-actions">
           <Button variant="ghost" disabled={working} onClick={onClose}>
-            Отмена
+            {t('Отмена')}
           </Button>
           {neededMinor > 0 ? (
-            <Button onClick={() => setTopUp(true)}>Пополнить на {formatMoney(neededMinor, currency)}</Button>
+            <Button onClick={() => setTopUp(true)}>{t('Пополнить на {amount}', { amount: formatMoney(neededMinor, currency) })}</Button>
           ) : (
             <Button loading={working} onClick={onConfirm}>
-              {confirmLabel}
+              {confirmLabel ?? t('Подтвердить')}
             </Button>
           )}
         </div>
@@ -116,6 +118,7 @@ type Step =
  * Не хватает денег — в подтверждении сразу предлагается пополнение со страницей оплаты.
  */
 export default function RenewalSection({ options, subscription, onDone }: Props) {
+  const t = useT();
   const [step, setStep] = useState<Step>({ kind: 'tariffs' });
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [working, setWorking] = useState(false);
@@ -151,13 +154,13 @@ export default function RenewalSection({ options, subscription, onDone }: Props)
     try {
       if (step.kind === 'switch') {
         await switchTariff(step.tariff.id, step.tariff.periods[0].days);
-        onDone(`Тариф изменён на «${step.tariff.name}».`);
+        onDone(t('Тариф изменён на «{name}».', { name: step.tariff.name }));
       } else if (step.tariff.is_current) {
         await renew(step.period.days);
-        onDone('Подписка продлена.');
+        onDone(t('Подписка продлена.'));
       } else {
         await purchaseTariff(step.tariff.id, step.period.days);
-        onDone(`Тариф «${step.tariff.name}» оформлен.`);
+        onDone(t('Тариф «{name}» оформлен.', { name: step.tariff.name }));
       }
       setStep({ kind: 'tariffs' });
     } catch (err) {
@@ -175,10 +178,10 @@ export default function RenewalSection({ options, subscription, onDone }: Props)
   return (
     <section className="card">
       <div className="row">
-        <span className="label">{step.kind === 'tariffs' ? 'Продление и тариф' : 'Выбор тарифа'}</span>
+        <span className="label">{step.kind === 'tariffs' ? t('Продление и тариф') : t('Выбор тарифа')}</span>
         {step.kind !== 'tariffs' && (
           <button className="link-btn" onClick={back}>
-            ← Назад
+            {t('← Назад')}
           </button>
         )}
       </div>
@@ -189,31 +192,32 @@ export default function RenewalSection({ options, subscription, onDone }: Props)
         <>
           {canSwitch && (
             <p className="muted" style={{ margin: 0 }}>
-              При смене тарифа учитывается остаток текущего: у вас {daysLeft > 0 ? `${daysLeft} дн.` : 'ещё есть время'} подписки, срок не
-              теряется, а платится только разница. Точную сумму покажем после выбора тарифа.
+              {t('При смене тарифа учитывается остаток текущего: у вас {left} подписки, срок не теряется, а платится только разница. Точную сумму покажем после выбора тарифа.', {
+                left: daysLeft > 0 ? t('{n} дн.', { n: daysLeft }) : t('ещё есть время'),
+              })}
             </p>
           )}
           <div className="list">
-            {tariffs.length === 0 && <p className="muted">Тарифы сейчас недоступны.</p>}
+            {tariffs.length === 0 && <p className="muted">{t('Тарифы сейчас недоступны.')}</p>}
             {tariffs.map((tariff) => (
               <button key={tariff.id} className="tariff-card" disabled={loadingId !== null} onClick={() => void pickTariff(tariff)}>
                 <span className="tariff-head">
                   <strong>{tariff.name}</strong>
-                  {tariff.is_current && <span className="chip">Текущий</span>}
+                  {tariff.is_current && <span className="chip">{t('Текущий')}</span>}
                 </span>
                 <span className="muted">
-                  {tariff.traffic_limit_label} · устройств: {tariff.device_limit}
-                  {tariff.servers_count > 0 ? ` · серверов: ${tariff.servers_count}` : ''}
+                  {tariff.traffic_limit_label} · {t('устройств: {count}', { count: tariff.device_limit })}
+                  {tariff.servers_count > 0 ? ` · ${t('серверов: {count}', { count: tariff.servers_count })}` : ''}
                 </span>
                 {tariff.description && <span className="muted tariff-desc">{tariff.description}</span>}
                 <span className="tariff-cta">
                   {loadingId === tariff.id
-                    ? 'Считаем…'
+                    ? t('Считаем…')
                     : tariff.is_current
-                      ? 'Продлить'
+                      ? t('Продлить')
                       : canSwitch
-                        ? 'Перейти на этот тариф'
-                        : `Выбрать · от ${tariff.periods[0].price_label}`}
+                        ? t('Перейти на этот тариф')
+                        : t('Выбрать · от {price}', { price: tariff.periods[0].price_label })}
                 </span>
               </button>
             ))}
@@ -225,7 +229,7 @@ export default function RenewalSection({ options, subscription, onDone }: Props)
         <>
           <p style={{ margin: 0 }}>
             <strong>{step.tariff.name}</strong>
-            <span className="muted"> — выберите срок</span>
+            <span className="muted"> — {t('выберите срок')}</span>
           </p>
           <PeriodGrid
             tariff={step.tariff}
@@ -239,35 +243,37 @@ export default function RenewalSection({ options, subscription, onDone }: Props)
 
       {(step.kind === 'confirm' || step.kind === 'switch') && (
         <ConfirmDialog
-          title={step.kind === 'switch' ? 'Сменить тариф' : step.tariff.is_current ? 'Продлить подписку' : 'Оформить подписку'}
+          title={step.kind === 'switch' ? t('Сменить тариф') : step.tariff.is_current ? t('Продлить подписку') : t('Оформить подписку')}
           currency={currency}
           neededMinor={needed}
           working={working}
           error={error}
           onConfirm={() => void confirm()}
           onClose={back}
-          onToppedUp={() => onDone('Баланс пополнен — теперь можно подтвердить покупку.')}
+          onToppedUp={() => onDone(t('Баланс пополнен — теперь можно подтвердить покупку.'))}
           body={
             step.kind === 'switch' ? (
               <>
-                <p style={{ margin: 0 }}>Перейти на тариф «{step.tariff.name}».</p>
+                <p style={{ margin: 0 }}>{t('Перейти на тариф «{name}».', { name: step.tariff.name })}</p>
                 <p className="muted" style={{ margin: 0 }}>
-                  Остаток текущего тарифа ({step.preview.remaining_days} дн.) засчитан. Срок подписки сохранится.
+                  {t('Остаток текущего тарифа ({days} дн.) засчитан. Срок подписки сохранится.', { days: step.preview.remaining_days })}
                 </p>
                 <p style={{ margin: 0 }}>
                   {step.preview.upgrade_cost_kopeks > 0 ? (
                     <>
-                      К оплате: <strong>{step.preview.upgrade_cost_label}</strong>. Сумма спишется с баланса.
+                      {t('К оплате:')} <strong>{step.preview.upgrade_cost_label}</strong>. {t('Сумма спишется с баланса.')}
                     </>
                   ) : (
-                    <strong>Доплата не нужна.</strong>
+                    <strong>{t('Доплата не нужна.')}</strong>
                   )}
                 </p>
               </>
             ) : (
               <p style={{ margin: 0 }}>
-                {step.tariff.is_current ? 'Продлить' : 'Оформить'} тариф «{step.tariff.name}» на {step.period.label.toLowerCase()} за{' '}
-                <strong>{step.period.price_label}</strong>. Сумма спишется с баланса ({formatMoney(balance, currency)}).
+                {step.tariff.is_current
+                  ? t('Продлить тариф «{name}» на {period} за', { name: step.tariff.name, period: step.period.label.toLowerCase() })
+                  : t('Оформить тариф «{name}» на {period} за', { name: step.tariff.name, period: step.period.label.toLowerCase() })}{' '}
+                <strong>{step.period.price_label}</strong>. {t('Сумма спишется с баланса ({balance}).', { balance: formatMoney(balance, currency) })}
               </p>
             )
           }
