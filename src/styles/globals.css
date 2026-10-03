@@ -1613,3 +1613,37 @@ h2 {
 .icon-btn-spin svg {
   animation: spin 0.9s linear infinite;
 }
+
+/* Выбор языка: сетка кнопок в конце страницы входа и профиля */
+
+.lang-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.lang-option:hover {
+  border-color: var(--accent);
+}
+
+.lang-option-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}

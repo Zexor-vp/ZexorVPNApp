@@ -3,6 +3,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import { check as checkForUpdate, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import Button from '../components/Button';
+import LanguageCard from '../components/LanguageCard';
 import PageShell from '../components/PageShell';
 import Segmented from '../components/Segmented';
 import Toggle from '../components/Toggle';
@@ -233,6 +234,8 @@ export default function ProfilePage({ onLoggedOut }: Props) {
           {t('Выйти из аккаунта')}
         </Button>
       </section>
+
+      <LanguageCard />
     </PageShell>
   );
 }

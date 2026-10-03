@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import logo from '../assets/logo.png';
-import LanguageMenu from './LanguageMenu';
 
 interface Props {
   /** Кнопки справа в шапке (например, «+» на главной). */
@@ -18,7 +17,6 @@ export default function PageShell({ actions, children }: Props) {
           <span className="brand-name">Zexor</span>
         </div>
         <div className="row" style={{ gap: '0.5rem' }}>
-          <LanguageMenu />
           {actions}
         </div>
       </header>

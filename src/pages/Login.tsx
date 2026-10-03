@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import Button from '../components/Button';
+import LanguageCard from '../components/LanguageCard';
 import PageShell from '../components/PageShell';
 import {
   errorMessage,
@@ -172,6 +173,8 @@ export default function Login({ onSuccess }: Props) {
           </Button>
         </div>
       </section>
+
+      <LanguageCard />
     </PageShell>
   );
 }
