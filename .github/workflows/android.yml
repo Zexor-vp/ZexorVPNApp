@@ -100,8 +100,6 @@ jobs:
           KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          SEED: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           KS_TYPE=""
@@ -113,38 +111,9 @@ jobs:
             PASS="${KS_PASS}"; ALIAS="${KS_ALIAS:-zexor}"; KS_TYPE="pkcs12"
             echo "ключ: из секретов" | tee android-sign.log
           else
-            # Постоянный ключ без ручных секретов: файл ключа лежит в отдельной ветке android-keystore этого
-            # репозитория, а пароль выводится из секрета TAURI_SIGNING_PRIVATE_KEY (его знает только CI).
-            # Без этого пароля файл бесполезен; сам ключ создаётся один раз, и все следующие сборки подписываются им,
-            # поэтому Android ставит новые версии поверх старых.
-            [ -n "${SEED}" ] || { echo "::error::секрет TAURI_SIGNING_PRIVATE_KEY недоступен"; exit 1; }
-            PASS="$(printf 'zexor-android-keystore-v1' | openssl dgst -sha256 -hmac "${SEED}" -binary | base64 -w0 | tr -d '=+/' | cut -c1-40)"
-            echo "::add-mask::${PASS}"
-            ALIAS="zexor"; KS_TYPE="pkcs12"
-            fetch_keystore() {
-              git fetch -q origin android-keystore 2>/dev/null && git show FETCH_HEAD:zexor-release.p12 > /tmp/zexor.jks 2>/dev/null
-            }
-            if fetch_keystore; then
-              echo "ключ: постоянный (из ветки android-keystore)" | tee android-sign.log
-            else
-              keytool -genkeypair -keystore /tmp/zexor.jks -storetype PKCS12 -alias "${ALIAS}" -keyalg RSA -keysize 3072 \
-                -validity 36500 -storepass "${PASS}" -keypass "${PASS}" -dname "CN=Zexor VPN" >/dev/null 2>&1
-              WORK="$(mktemp -d)"
-              cp /tmp/zexor.jks "${WORK}/zexor-release.p12"
-              if (cd "${WORK}" && git init -q && git checkout -q -b android-keystore \
-                    && git -c user.name=zexor-ci -c user.email=ci@zexor.site add zexor-release.p12 \
-                    && git -c user.name=zexor-ci -c user.email=ci@zexor.site commit -q -m "Android signing key (encrypted)" \
-                    && git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-                    && git push -q origin android-keystore); then
-                echo "ключ: создан и сохранён в ветке android-keystore" | tee android-sign.log
-              elif fetch_keystore; then
-                # Параллельная сборка успела сохранить свой ключ раньше — берём его, чтобы подпись была единой.
-                echo "ключ: постоянный (взят у параллельной сборки)" | tee android-sign.log
-              else
-                echo "::error::не удалось ни сохранить, ни получить постоянный ключ"
-                exit 1
-              fi
-            fi
+            # Без постоянного ключа APK подписывать нельзя: временный ключ сломал бы обновления поверх установленной версии.
+            echo "::error::нет секретов ANDROID_KEYSTORE_B64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS"
+            exit 1
           fi
           VERSION="$(node -p "require('./package.json').version")"
           OUT="Zexor-VPN-${VERSION}-android-arm64.apk"
