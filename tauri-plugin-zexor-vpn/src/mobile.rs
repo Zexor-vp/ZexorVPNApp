@@ -99,6 +99,15 @@ impl<R: Runtime> Vpn<R> {
         Ok(reply.action)
     }
 
+    /// Показывает короткое системное сообщение (когда окна приложения нет на экране).
+    pub async fn toast(&self, text: &str) -> Result<(), VpnError> {
+        let _: serde_json::Value = self
+            .0
+            .run_mobile_plugin_async("toast", json!({ "text": text }))
+            .await?;
+        Ok(())
+    }
+
     /// Убирает окно приложения в фон.
     pub async fn background(&self) -> Result<(), VpnError> {
         let _: serde_json::Value = self

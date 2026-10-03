@@ -23,15 +23,13 @@ class ZexorWidgetProvider : AppWidgetProvider() {
                 "setBackgroundResource",
                 if (running) R.drawable.widget_bg_on else R.drawable.widget_bg_off,
             )
-            QuickSurfaces.launchIntent(context)?.let { intent ->
-                val pending = PendingIntent.getActivity(
-                    context,
-                    1,
-                    intent,
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                )
-                views.setOnClickPendingIntent(R.id.widget_root, pending)
-            }
+            val pending = PendingIntent.getActivity(
+                context,
+                1,
+                QuickSurfaces.trampolineIntent(context),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            views.setOnClickPendingIntent(R.id.widget_root, pending)
             manager.updateAppWidget(ids, views)
         }
     }

@@ -28,6 +28,7 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
         recordPreviousExit()
         installCrashLogger()
         takeQuickAction(activity.intent)
+        QuickSurfaces.rustReady = true
         val dir = File(activity.filesDir, "geo").apply { mkdirs() }
         // Базы в APK сжаты, поэтому `openFd` для них падает; читаем обычным `open`. Перекопируем, если файла нет
         // или он старше установленной версии приложения (после обновления базы могли смениться).
@@ -74,7 +75,23 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
     /** Убирает окно приложения обратно в фон (после «тихого» включения с плитки/виджета). */
     @Command
     fun background(invoke: Invoke) {
-        activity.runOnUiThread { activity.moveTaskToBack(true) }
+        QuickSurfaces.done = true
+        try {
+            activity.runOnUiThread { activity.moveTaskToBack(true) }
+        } catch (_: Exception) {
+            // Окна приложения уже нет (процесс жил в фоне) — убирать нечего.
+        }
+        invoke.resolve()
+    }
+
+    /** Короткое системное сообщение: ошибка быстрого включения, когда окна приложения нет на экране. */
+    @Command
+    fun toast(invoke: Invoke) {
+        val text = invoke.getString("text") ?: ""
+        QuickSurfaces.done = true
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            android.widget.Toast.makeText(activity.applicationContext, text, android.widget.Toast.LENGTH_LONG).show()
+        }
         invoke.resolve()
     }
 
@@ -212,7 +229,7 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
     fun establish(invoke: Invoke) {
         Thread {
             try {
-                val ok = ZexorVpnService.start(activity).get(15, TimeUnit.SECONDS)
+                val ok = ZexorVpnService.start(activity.applicationContext).get(15, TimeUnit.SECONDS)
                 val descriptor = ZexorVpnService.tun
                 if (!ok || descriptor == null) {
                     invoke.reject("Не удалось создать VPN-интерфейс")

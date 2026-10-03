@@ -14,7 +14,7 @@ class ZexorTileService : TileService() {
     }
 
     override fun onClick() {
-        val intent = QuickSurfaces.launchIntent(this) ?: return
+        val intent = QuickSurfaces.trampolineIntent(this)
         val open = {
             if (Build.VERSION.SDK_INT >= 34) {
                 startActivityAndCollapse(

@@ -29,6 +29,14 @@
             </intent-filter>
         </service>
 
+        <activity
+            android:name="site.zexorvpn.vpn.QuickToggleActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <receiver
             android:name="site.zexorvpn.vpn.ZexorWidgetProvider"
             android:exported="true"

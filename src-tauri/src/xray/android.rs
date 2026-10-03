@@ -150,6 +150,8 @@ pub fn spawn_quick_actions(app: AppHandle) {
                     let _ = vpn.background().await;
                 }
                 Err(message) => {
+                    // Окна может не быть на экране — сообщаем системным сообщением, а в окне (если оно есть) покажет главная.
+                    let _ = vpn.toast(&message).await;
                     let _ = app.emit("quick-error", message);
                 }
             }

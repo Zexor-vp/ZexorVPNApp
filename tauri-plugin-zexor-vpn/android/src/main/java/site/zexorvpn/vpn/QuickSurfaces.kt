@@ -21,6 +21,18 @@ object QuickSurfaces {
     @Volatile
     var pending: String? = null
 
+    /** Rust-часть приложения запущена в этом процессе и подхватит действие, не открывая окно. */
+    @Volatile
+    var rustReady: Boolean = false
+
+    /** Rust закончил обработку последнего действия (успешно или с ошибкой). */
+    @Volatile
+    var done: Boolean = false
+
+    /** Что запускают плитка и виджет: невидимая прослойка, которая сама решает, открывать ли приложение. */
+    fun trampolineIntent(context: Context): Intent =
+        Intent(context, QuickToggleActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
     fun launchIntent(context: Context): Intent? =
         context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             putExtra(EXTRA, ACTION_TOGGLE)
