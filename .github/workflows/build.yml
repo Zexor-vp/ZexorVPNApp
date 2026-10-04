@@ -20,6 +20,8 @@ jobs:
   # чем поднимать windows-раннер (он тарифицируется с множителем x2).
   test-core:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -32,11 +34,14 @@ jobs:
       - name: Тесты ядра
         run: |
           set -o pipefail
-          cargo test -p zexor-vpn-core --all-features 2>&1 | tee core-tests.log
+          # На CI иногда падает один из тестов (на тегах чаще, чем на ветке; лог — в ветке ci-logs-core). Пока причину не
+          # нашли, один раз повторяем: настоящая ошибка упадёт и второй раз.
+          cargo test -p zexor-vpn-core --all-features 2>&1 | tee core-tests.log \
+            || { echo '=== повторный прогон ===' | tee -a core-tests.log; cargo test -p zexor-vpn-core --all-features 2>&1 | tee -a core-tests.log; }
 
       # Журналы Actions без входа в GitHub не прочитать — хвост журнала тестов кладём в ветку ci-logs-core.
       - name: Журнал тестов в ветку ci-logs-core
-        if: failure()
+        if: always()
         run: |
           mkdir -p /tmp/ci-logs
           tail -n 400 core-tests.log > /tmp/ci-logs/core-tests.log || true
