@@ -67,6 +67,26 @@ pub fn is_zexor_service_url(url: &str) -> bool {
     OWN_HOSTS.iter().any(|own| host.eq_ignore_ascii_case(own))
 }
 
+/// Адрес зеркала подписки на российском хостинге: тот же код подписки, но запрос идёт через скрипт зеркала.
+/// `None`, если ссылка не наша или кода в ней нет.
+pub fn mirror_subscription_url(url: &str) -> Option<String> {
+    if !is_zexor_service_url(url) {
+        return None;
+    }
+    let rest = url.strip_prefix("https://")?;
+    let path = rest.split(['?', '#']).next()?;
+    let code = path.rsplit('/').find(|part| !part.is_empty())?;
+    let valid = (6..=64).contains(&code.len())
+        && code
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+    // Сам хост тоже может оказаться «последним сегментом» у ссылки без пути — такое зеркалу не отдаём.
+    if !valid || code.contains('.') {
+        return None;
+    }
+    Some(format!("https://ru.zexor.site/sub/index.php?p={code}"))
+}
+
 pub fn find(id: &str) -> Option<Source> {
     load().into_iter().find(|s| s.id == id)
 }
@@ -94,6 +114,22 @@ pub fn new_id() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mirror_url_keeps_only_the_subscription_code() {
+        assert_eq!(
+            mirror_subscription_url("https://sub.zexorvpn.site/fLeDot5XDhCx5DYq").as_deref(),
+            Some("https://ru.zexor.site/sub/index.php?p=fLeDot5XDhCx5DYq")
+        );
+        assert_eq!(
+            mirror_subscription_url("https://sub.zexor.site/api/sub/zxf_SkfVgSRMCNQ1?x=1")
+                .as_deref(),
+            Some("https://ru.zexor.site/sub/index.php?p=zxf_SkfVgSRMCNQ1")
+        );
+        assert!(mirror_subscription_url("https://example.com/abcdefgh").is_none());
+        assert!(mirror_subscription_url("https://sub.zexorvpn.site/").is_none());
+        assert!(mirror_subscription_url("https://sub.zexorvpn.site/ab").is_none());
+    }
 
     #[test]
     fn own_subscription_hosts_are_recognised() {

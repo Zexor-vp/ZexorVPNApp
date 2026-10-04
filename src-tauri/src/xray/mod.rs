@@ -70,7 +70,51 @@ async fn download_account_subscription(url: &str) -> Result<String, ConnectError
     #[cfg(target_os = "android")]
     android::ready().await;
     let hwid = zexor_vpn_core::hwid::load_or_create();
-    download_with_headers(url, zexor_vpn_core::hwid::subscription_headers(&hwid)).await
+    let headers = zexor_vpn_core::hwid::subscription_headers(&hwid);
+    let primary = download_with_headers(url, headers.clone()).await;
+    // Основной адрес не отвечает (блокировка по IP, сеть) — пробуем зеркало на российском хостинге.
+    if let Err(ConnectError::FetchSubscription(_)) = &primary {
+        if let Some(mirror) = zexor_vpn_core::sources::mirror_subscription_url(url) {
+            if let Ok(body) = download_via_mirror(&mirror, headers).await {
+                return Ok(body);
+            }
+        }
+    }
+    primary
+}
+
+/// Сертификат нашего удостоверяющего центра для зеркала: хостинг не выдаёт Let's Encrypt, поэтому зеркало использует
+/// собственный сертификат. Клиент для зеркала доверяет только ему (системные корни отключены) — это защита от подмены.
+const MIRROR_CA_PEM: &[u8] = include_bytes!("mirror_ca.pem");
+
+/// Зеркало на общем хостинге иногда не принимает соединение с первого раза — поэтому несколько попыток с коротким
+/// временем на подключение.
+async fn download_via_mirror(
+    url: &str,
+    headers: Vec<(&'static str, String)>,
+) -> Result<String, ConnectError> {
+    let fail = || ConnectError::FetchSubscription("зеркало подписки не отвечает".to_string());
+    let certificate = reqwest::Certificate::from_pem(MIRROR_CA_PEM).map_err(|_| fail())?;
+    let client = reqwest::Client::builder()
+        .user_agent(concat!("ZexorVPN-Desktop/", env!("CARGO_PKG_VERSION")))
+        .tls_built_in_root_certs(false)
+        .add_root_certificate(certificate)
+        .connect_timeout(std::time::Duration::from_secs(6))
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|_| fail())?;
+    for attempt in 0..3 {
+        match download_with_client(&client, url, headers.clone()).await {
+            Ok(body) => return Ok(body),
+            // Ответ получен, но он плохой (нет подписки, лимит устройств и т. п.) — повтор ничего не изменит.
+            Err(err @ ConnectError::SubscriptionRejected(_)) => return Err(err),
+            Err(_) if attempt < 2 => {
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await
+            }
+            Err(_) => {}
+        }
+    }
+    Err(fail())
 }
 
 async fn download_with_headers(
@@ -82,6 +126,14 @@ async fn download_with_headers(
         .timeout(std::time::Duration::from_secs(20))
         .build()
         .map_err(|e| ConnectError::FetchSubscription(e.to_string()))?;
+    download_with_client(&client, url, headers).await
+}
+
+async fn download_with_client(
+    client: &reqwest::Client,
+    url: &str,
+    headers: Vec<(&'static str, String)>,
+) -> Result<String, ConnectError> {
     let mut request = client.get(url);
     // `header` заменяет значение, поэтому наш User-Agent по умолчанию уступает Happ-овскому.
     for (name, value) in headers {
