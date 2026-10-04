@@ -13,7 +13,7 @@ use zexor_vpn_core::adblock::counter::BlockCounter;
 use zexor_vpn_core::{probe, ConfigOptions, Node, TunnelMode, XrayProcess};
 
 use crate::auth::{ensure_valid_access_token, AuthError};
-use crate::state::AppState;
+use crate::state::{AppState, Tunnel};
 use zexor_vpn_core::sources::{self, ACCOUNT_SOURCE};
 
 #[derive(Debug, thiserror::Error)]
@@ -51,6 +51,8 @@ pub enum ConnectError {
     VpnPermissionDenied,
     #[error("не удалось создать VPN-подключение: {0}")]
     VpnSetup(String),
+    #[error("не удалось подключить AmneziaWG: {0}")]
+    Awg(String),
 }
 
 /// Скачивает тело подписки по ссылке. Свой User-Agent нужен, чтобы панель отдала
@@ -201,8 +203,17 @@ pub async fn fetch_nodes(
             download_account_subscription(&url).await?
         }
         Some(id) => {
-            let url = sources::find(id).ok_or(ConnectError::SourceNotFound)?.url;
-            download_subscription(&url).await?
+            let source = sources::find(id).ok_or(ConnectError::SourceNotFound)?;
+            // Источник-конфиг AmneziaWG: скачивать нечего, единственный «сервер» — сам конфиг.
+            if let Some(text) = &source.awg_config {
+                let config = zexor_vpn_core::awg::AwgConfig::parse(text)
+                    .map_err(|e| ConnectError::SubscriptionRejected(e.to_string()))?;
+                return Ok(vec![Node::Awg(zexor_vpn_core::awg::AwgNode {
+                    remark: source.name.clone(),
+                    config,
+                })]);
+            }
+            download_subscription(&source.url).await?
         }
     };
     let nodes = zexor_vpn_core::parse_nodes(&body)?;
@@ -472,7 +483,7 @@ async fn start_tunnel(
     }
 
     let mut connection = state.connection.lock().unwrap();
-    connection.process = Some(process);
+    connection.process = Some(Tunnel::Xray(process));
     connection.connected_node = Some(label.to_string());
     connection.connected_source = Some(source_id.to_string());
     connection.auto = auto;
@@ -486,6 +497,9 @@ pub async fn connect_to_node(
     node: &Node,
     source_id: &str,
 ) -> Result<(), ConnectError> {
+    if let Node::Awg(awg) = node {
+        return start_awg(app, state, awg, source_id).await;
+    }
     start_tunnel(
         app,
         state,
@@ -495,6 +509,52 @@ pub async fn connect_to_node(
         false,
     )
     .await
+}
+
+/// Подключение по конфигу AmneziaWG: системный VPN Android создаёт TUN, а движок `amneziawg-go` (отдельный процесс,
+/// как xray) получает его дескриптор и настраивается по сокету управления. Xray здесь не участвует.
+async fn start_awg(
+    app: &AppHandle,
+    state: &AppState,
+    node: &zexor_vpn_core::awg::AwgNode,
+    source_id: &str,
+) -> Result<(), ConnectError> {
+    #[cfg(target_os = "android")]
+    {
+        let tun_fd = android::establish_awg(app, &node.config).await?;
+        let started = (|| -> Result<zexor_vpn_core::awg::AwgProcess, ConnectError> {
+            let binary = android::awg_binary()
+                .filter(|path| path.is_file())
+                .ok_or_else(|| ConnectError::BinaryMissing("libawg.so".to_string()))?;
+            let work_dir = android::awg_work_dir()
+                .ok_or_else(|| ConnectError::Awg("приложение ещё не готово".to_string()))?;
+            zexor_vpn_core::awg::AwgProcess::start(&binary, tun_fd, &work_dir, &node.config)
+                .map_err(|e| ConnectError::Awg(e.to_string()))
+        })();
+        // Свою копию дескриптора закрываем: у движка теперь есть собственная.
+        android::close_fd(tun_fd);
+        match started {
+            Ok(process) => {
+                let mut connection = state.connection.lock().unwrap();
+                connection.process = Some(Tunnel::Awg(process));
+                connection.connected_node = Some(node.remark.clone());
+                connection.connected_source = Some(source_id.to_string());
+                connection.auto = false;
+                Ok(())
+            }
+            Err(err) => {
+                android::stop();
+                Err(err)
+            }
+        }
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, state, node, source_id);
+        Err(ConnectError::Awg(
+            "AmneziaWG пока доступен только в приложении для Android".to_string(),
+        ))
+    }
 }
 
 /// Подпись подключения в авто-режиме.
@@ -596,6 +656,15 @@ pub async fn connect_auto(
         .await?;
         return Ok(AutoOutcome {
             label: AUTO_LABEL.to_string(),
+            ms: None,
+        });
+    }
+
+    // Источник — конфиг AmneziaWG: выбирать не из чего, подключаемся к нему напрямую.
+    if let Some(awg) = servers.iter().find(|n| matches!(n, Node::Awg(_))) {
+        connect_to_node(app, state, awg, source_id).await?;
+        return Ok(AutoOutcome {
+            label: awg.remark().to_string(),
             ms: None,
         });
     }

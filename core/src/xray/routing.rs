@@ -182,6 +182,7 @@ fn outbound_for(node: &Node, tag: &str) -> Option<Value> {
             .get(0)?
             .clone(),
         Node::WireGuard(wg) => build_wireguard_outbounds(wg).get(0)?.clone(),
+        Node::Awg(_) => return None,
     };
     outbound["tag"] = json!(tag);
     Some(outbound)

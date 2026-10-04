@@ -9,6 +9,12 @@ import type { NodeSummary } from '../lib/commands';
 /** `undefined` — ещё меряем, `null` — не отвечает, число — миллисекунды. */
 export type PingValue = number | null | undefined;
 
+/** У серверов AmneziaWG (UDP) пинга нет — вместо него метка протокола. */
+export function NodeBadge({ node, ms }: { node: { protocol: string }; ms: PingValue }) {
+  if (node.protocol === 'awg') return <span className="ping ping-good">AWG</span>;
+  return <PingBadge ms={ms} />;
+}
+
 export function PingBadge({ ms }: { ms: PingValue }) {
   const t = useT();
   if (ms === undefined) return <span className="ping ping-pending">…</span>;
@@ -78,7 +84,7 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
                 </strong>
                 <span className="muted">{node.protocol === 'wireguard' ? 'WireGuard' : node.is_reality ? 'VLESS · REALITY' : 'VLESS'}</span>
               </span>
-              <PingBadge ms={pings[node.remark]} />
+              <NodeBadge node={node} ms={pings[node.remark]} />
             </button>
           );
         })}
@@ -105,7 +111,7 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
               t('Нет серверов')
             ) : (
               <>
-                {current ? <ServerName remark={current.remark} /> : '—'} {current && <PingBadge ms={pings[current.remark]} />}
+                {current ? <ServerName remark={current.remark} /> : '—'} {current && <NodeBadge node={current} ms={pings[current.remark]} />}
               </>
             )}
           </span>
@@ -133,7 +139,7 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
                 </strong>
                 <span className="muted">{node.protocol === 'wireguard' ? 'WireGuard' : node.is_reality ? 'VLESS · REALITY' : 'VLESS'}</span>
               </span>
-              <PingBadge ms={pings[node.remark]} />
+              <NodeBadge node={node} ms={pings[node.remark]} />
             </button>
           ))}
 

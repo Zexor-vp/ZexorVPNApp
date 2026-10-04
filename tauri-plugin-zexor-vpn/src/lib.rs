@@ -10,7 +10,7 @@ use tauri::Runtime;
 #[cfg(target_os = "android")]
 mod mobile;
 #[cfg(target_os = "android")]
-pub use mobile::{Established, Info, Vpn, VpnError};
+pub use mobile::{Established, Info, TunParams, Vpn, VpnError};
 
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("zexor-vpn")

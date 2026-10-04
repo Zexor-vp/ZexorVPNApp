@@ -12,6 +12,22 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import java.util.concurrent.CompletableFuture
 
+/** Параметры TUN-интерфейса для движков со своей адресацией (AmneziaWG): адреса и маршруты как `(адрес, длина маски)`. */
+class TunParams(
+    val addresses: List<Pair<String, Int>>,
+    val routes: List<Pair<String, Int>>,
+    val dns: List<String>,
+    val mtu: Int,
+)
+
+/** `10.0.0.2/32` → (`10.0.0.2`, 32); `null`, если строка не похожа на адрес с маской. */
+fun parseCidr(value: String): Pair<String, Int>? {
+    val parts = value.trim().split("/")
+    if (parts.size != 2) return null
+    val prefix = parts[1].trim().toIntOrNull() ?: return null
+    return parts[0].trim() to prefix
+}
+
 /**
  * Системный VPN: создаёт TUN-интерфейс и держит его, пока работает туннель.
  *
@@ -36,6 +52,10 @@ class ZexorVpnService : VpnService() {
 
         @Volatile
         var running: Boolean = false
+
+        /** Параметры интерфейса для следующего запуска; `null` — интерфейс для xray по умолчанию. */
+        @Volatile
+        var tunParams: TunParams? = null
 
         fun start(context: Context): CompletableFuture<Boolean> {
             val future = CompletableFuture<Boolean>()
@@ -72,15 +92,22 @@ class ZexorVpnService : VpnService() {
         val future = pending
         try {
             teardown(keepForeground = true)
-            val builder = Builder()
-                .setSession("Zexor VPN")
-                .setMtu(1500)
-                .addAddress("172.19.0.1", 30)
-                .addRoute("0.0.0.0", 0)
-                .addAddress("fd00:19::1", 126)
-                .addRoute("::", 0)
-                .addDnsServer("1.1.1.1")
-                .addDnsServer("8.8.8.8")
+            val params = tunParams
+            val builder = Builder().setSession("Zexor VPN").setMtu(params?.mtu ?: 1500)
+            if (params == null) {
+                builder
+                    .addAddress("172.19.0.1", 30)
+                    .addRoute("0.0.0.0", 0)
+                    .addAddress("fd00:19::1", 126)
+                    .addRoute("::", 0)
+                    .addDnsServer("1.1.1.1")
+                    .addDnsServer("8.8.8.8")
+            } else {
+                params.addresses.forEach { builder.addAddress(it.first, it.second) }
+                params.routes.forEach { builder.addRoute(it.first, it.second) }
+                val servers = params.dns.ifEmpty { listOf("1.1.1.1", "8.8.8.8") }
+                servers.forEach { builder.addDnsServer(it) }
+            }
             // Сам xray и запросы приложения идут мимо туннеля.
             builder.addDisallowedApplication(packageName)
             val descriptor = builder.establish()

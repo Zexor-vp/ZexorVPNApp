@@ -12,6 +12,31 @@ use zexor_vpn_core::adblock::settings::AdblockConfig;
 use zexor_vpn_core::settings::AppSettings;
 use zexor_vpn_core::{ApiClient, TokenSet, XrayProcess};
 
+/// Запущенный туннель: xray или (на Android) AmneziaWG. Живёт, пока жив процесс движка.
+pub enum Tunnel {
+    Xray(XrayProcess),
+    #[cfg(unix)]
+    Awg(zexor_vpn_core::awg::AwgProcess),
+}
+
+impl Tunnel {
+    pub fn is_running(&mut self) -> bool {
+        match self {
+            Tunnel::Xray(process) => process.is_running(),
+            #[cfg(unix)]
+            Tunnel::Awg(process) => process.is_running(),
+        }
+    }
+
+    pub fn stop(&mut self) {
+        match self {
+            Tunnel::Xray(process) => process.stop(),
+            #[cfg(unix)]
+            Tunnel::Awg(process) => process.stop(),
+        }
+    }
+}
+
 /// Базовый URL API кабинета. Тот же бэкенд, что обслуживает веб-кабинет —
 /// nginx на этом домене режет префикс `/api/`, поэтому клиент шлёт запросы с
 /// ним же (см. `ApiClient::url`, пути вида `/api/cabinet/...`).
@@ -34,7 +59,7 @@ pub struct SessionState {
 
 #[derive(Default)]
 pub struct ConnectionState {
-    pub process: Option<XrayProcess>,
+    pub process: Option<Tunnel>,
     /// Remark ноды, к которой подключены — для отображения в UI.
     pub connected_node: Option<String>,
     /// Из какой подписки взят узел (`account` или id добавленной пользователем) —

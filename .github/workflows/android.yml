@@ -76,6 +76,19 @@ jobs:
           cp /tmp/xray-android/geoip.dat /tmp/xray-android/geosite.dat "$PLUGIN/assets/geo/"
           ls -la "$PLUGIN/jniLibs/arm64-v8a" "$PLUGIN/assets/geo"
 
+      # AmneziaWG: движок собираем из исходников (MIT) на закреплённом коммите и кладём в APK как libawg.so —
+      # так же, как xray, он запускается дочерним процессом приложения.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: AmneziaWG для Android
+        run: |
+          PLUGIN=tauri-plugin-zexor-vpn/android/src/main
+          mkdir -p "$PLUGIN/jniLibs/arm64-v8a"
+          LICENSE_OUT="$PLUGIN/assets/licenses/amneziawg-go-LICENSE.txt" \
+            scripts/build-amneziawg-go.sh linux arm64 "$PLUGIN/jniLibs/arm64-v8a/libawg.so" 2>&1 | tee android-awg.log
+
       # Сгенерированный Gradle-проект приложения: нативные библиотеки нужно распаковывать на диск.
       - name: Gradle — распаковка нативных библиотек
         run: |
@@ -128,7 +141,7 @@ jobs:
           set +e
           BT="${ANDROID_HOME}/build-tools/35.0.0"
           {
-            echo "== файлы"; unzip -l "${APK_PATH}" | grep -E "libxray|geo/|classes|AndroidManifest|libzexor" | head -20
+            echo "== файлы"; unzip -l "${APK_PATH}" | grep -E "libxray|libawg|geo/|classes|AndroidManifest|libzexor" | head -20
             echo "== иконка"; "${BT}/aapt2" dump badging "${APK_PATH}" 2>&1 | grep -E "application-icon|application-label:" | head -5
             ICON="$("${BT}/aapt2" dump badging "${APK_PATH}" 2>&1 | grep -oE "application-icon-[0-9]+:'[^']+'" | tail -1 | sed -E "s/.*:'(.*)'/\\1/")"
             echo "иконка в APK: ${ICON}"
@@ -155,7 +168,7 @@ jobs:
         if: always()
         run: |
           mkdir -p /tmp/ci-logs
-          for f in android-sdk.log android-init.log android-build.log android-sign.log android-apk.log android-icon.log; do
+          for f in android-sdk.log android-init.log android-build.log android-sign.log android-apk.log android-icon.log android-awg.log; do
             [ -f "$f" ] && tail -n 1200 "$f" > "/tmp/ci-logs/$f" || true
           done
           echo "commit ${GITHUB_SHA}" > /tmp/ci-logs/README.txt

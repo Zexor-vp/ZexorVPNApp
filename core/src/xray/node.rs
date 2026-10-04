@@ -7,6 +7,7 @@
 use super::parser::{decode_subscription_body, parse_vless_uri, ParseError, VlessNode};
 use super::profile::{parse_profiles, Profile};
 use super::wireguard::{parse_wireguard_uri, WgNode};
+use crate::awg::AwgNode;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
@@ -14,6 +15,8 @@ pub enum Node {
     WireGuard(WgNode),
     /// Готовый профиль xray из подписки в формате Happ (сервер или панельный «AUTO»).
     Profile(Profile),
+    /// AmneziaWG (WireGuard с маскировкой): свой движок вместо xray.
+    Awg(AwgNode),
 }
 
 impl Node {
@@ -22,6 +25,7 @@ impl Node {
             Node::Vless(n) => &n.remark,
             Node::WireGuard(n) => &n.remark,
             Node::Profile(p) => &p.remark,
+            Node::Awg(n) => &n.remark,
         }
     }
 
@@ -31,6 +35,7 @@ impl Node {
             Node::Vless(_) => "vless",
             Node::WireGuard(_) => "wireguard",
             Node::Profile(p) => p.protocol(),
+            Node::Awg(_) => "awg",
         }
     }
 
@@ -39,6 +44,7 @@ impl Node {
             Node::Vless(n) => n.is_reality(),
             Node::WireGuard(_) => false,
             Node::Profile(p) => p.is_reality(),
+            Node::Awg(_) => false,
         }
     }
 

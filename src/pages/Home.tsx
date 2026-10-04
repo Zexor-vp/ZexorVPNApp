@@ -702,7 +702,7 @@ function AddSourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: (s
     <Modal title={t('Добавить подписку')} onClose={onClose}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <p className="muted" style={{ margin: 0 }}>
-          {t('Вставьте ссылку подписки другого сервиса — её серверы появятся в этом приложении рядом с вашими.')}
+          {t('Вставьте ссылку подписки другого сервиса или конфиг AmneziaWG (.conf) — серверы появятся в этом приложении рядом с вашими.')}
         </p>
         <input
           className="text-input"
@@ -711,13 +711,31 @@ function AddSourceModal({ onClose, onAdded }: { onClose: () => void; onAdded: (s
           maxLength={40}
           onChange={(e) => setName(e.target.value)}
         />
-        <input
-          className="text-input"
-          placeholder="https://…"
+        <textarea
+          className="text-input text-area"
+          placeholder={t('https://… или текст конфига AmneziaWG')}
+          rows={3}
           value={url}
           autoFocus
           onChange={(e) => setUrl(e.target.value)}
         />
+        <label className="link-btn" style={{ alignSelf: 'flex-start', cursor: 'pointer' }}>
+          {t('Выбрать файл .conf')}
+          <input
+            type="file"
+            accept=".conf,.txt,text/plain"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (!file) return;
+              void file.text().then((text) => {
+                setUrl(text);
+                if (!name.trim()) setName(file.name.replace(/\.[^.]+$/, '').slice(0, 40));
+              });
+            }}
+          />
+        </label>
         {error && <p className="form-error">{error}</p>}
         <div className="modal-actions">
           <Button type="button" variant="ghost" onClick={onClose}>

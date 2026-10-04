@@ -46,6 +46,7 @@ impl From<ConnectError> for CommandError {
                         | ConnectError::Proxy(_)
                         | ConnectError::TunDriverMissing(_)
                         | ConnectError::VpnSetup(_)
+                        | ConnectError::Awg(_)
                         | ConnectError::Parse(_)
                 ) {
                     crate::error_report::report("connect", other.to_string());
@@ -190,6 +191,10 @@ pub fn list_sources() -> Vec<SourceSummary> {
 /// разбирается: «плюс» с мёртвой или пустой ссылкой только засорил бы список.
 #[tauri::command]
 pub async fn add_source(name: String, url: String) -> Result<SourceSummary, CommandError> {
+    // Вместо ссылки можно вставить конфиг AmneziaWG (текст с разделом [Interface]).
+    if url.to_ascii_lowercase().contains("[interface]") {
+        return add_awg_source(name, url);
+    }
     let url = sources::validate_url(&url).map_err(CommandError::Other)?;
     let body = download_subscription(&url).await?;
     let nodes = zexor_vpn_core::parse_nodes(&body).map_err(ConnectError::from)?;
@@ -213,10 +218,46 @@ pub async fn add_source(name: String, url: String) -> Result<SourceSummary, Comm
         id: sources::new_id(),
         name,
         url,
+        awg_config: None,
     };
     all.push(source.clone());
     sources::save(&all).map_err(|e| CommandError::Other(e.to_string()))?;
 
+    Ok(SourceSummary {
+        id: source.id,
+        name: source.name,
+        removable: true,
+    })
+}
+
+/// Добавляет сервер AmneziaWG по тексту конфига (`.conf`). Конфиг разбирается сразу: с ошибкой в нём подключиться
+/// всё равно не получится, лучше сказать об этом до сохранения.
+fn add_awg_source(name: String, text: String) -> Result<SourceSummary, CommandError> {
+    zexor_vpn_core::awg::AwgConfig::parse(&text).map_err(|e| CommandError::Other(e.to_string()))?;
+
+    let name = {
+        let trimmed = name.trim();
+        if trimmed.is_empty() {
+            "AmneziaWG".to_string()
+        } else {
+            trimmed.chars().take(40).collect()
+        }
+    };
+    let mut all = sources::load();
+    if all
+        .iter()
+        .any(|s| s.awg_config.as_deref() == Some(text.trim()))
+    {
+        return Err(CommandError::Other("этот конфиг уже добавлен".to_string()));
+    }
+    let source = Source {
+        id: sources::new_id(),
+        name,
+        url: "awg-config".to_string(),
+        awg_config: Some(text.trim().to_string()),
+    };
+    all.push(source.clone());
+    sources::save(&all).map_err(|e| CommandError::Other(e.to_string()))?;
     Ok(SourceSummary {
         id: source.id,
         name: source.name,
@@ -255,7 +296,11 @@ pub async fn ping_nodes(
     source_id: Option<String>,
 ) -> Result<Vec<NodePing>, CommandError> {
     let nodes = fetch_nodes(&state, source_id.as_deref()).await?;
-    let nodes: Vec<_> = nodes.into_iter().filter(|n| !n.is_balanced()).collect();
+    // AmneziaWG — UDP: TCP-пинг к нему не имеет смысла, такие серверы не меряем.
+    let nodes: Vec<_> = nodes
+        .into_iter()
+        .filter(|n| !n.is_balanced() && n.protocol() != "awg")
+        .collect();
     let pings = probe::tcp_ping_many(&nodes, Duration::from_secs(3)).await;
     // Замеры серверов нашей подписки уходят на сервер (анонимно, можно отключить в профиле).
     if source_id.is_none() || source_id.as_deref() == Some(ACCOUNT_SOURCE) {

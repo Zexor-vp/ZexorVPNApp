@@ -17,6 +17,9 @@ pub struct Source {
     pub id: String,
     pub name: String,
     pub url: String,
+    /// Текст конфига AmneziaWG, если источник добавлен вставкой конфига, а не ссылкой подписки.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub awg_config: Option<String>,
 }
 
 fn file_path() -> PathBuf {
@@ -157,6 +160,7 @@ mod tests {
             id: "a1".into(),
             name: "Другой сервис".into(),
             url: "https://example.com/sub".into(),
+            awg_config: None,
         }];
         save_to(&path, &list).unwrap();
         assert_eq!(load_from(&path), list);

@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use tauri::{AppHandle, Emitter, Manager, Wry};
-use tauri_plugin_zexor_vpn::Vpn;
+use tauri_plugin_zexor_vpn::{TunParams, Vpn};
 
 use super::ConnectError;
 
@@ -80,6 +80,37 @@ pub fn xray_env(fd: i32) -> Vec<(String, String)> {
 
 /// Разрешение на VPN (системное окно) и создание TUN. Возвращает дескриптор — закрыть его нужно после запуска xray.
 pub async fn establish(app: &AppHandle) -> Result<i32, ConnectError> {
+    establish_with(app, None).await
+}
+
+/// То же для AmneziaWG: адреса, маршруты и DNS берутся из его конфига.
+pub async fn establish_awg(
+    app: &AppHandle,
+    config: &zexor_vpn_core::awg::AwgConfig,
+) -> Result<i32, ConnectError> {
+    establish_with(
+        app,
+        Some(TunParams {
+            addresses: config.addresses.clone(),
+            routes: config.peer.allowed_ips.clone(),
+            dns: config.dns.clone(),
+            mtu: config.tunnel_mtu(),
+        }),
+    )
+    .await
+}
+
+/// Бинарник AmneziaWG (упакован в APK как `libawg.so`, как и xray).
+pub fn awg_binary() -> Option<PathBuf> {
+    paths().map(|p| p.lib_dir.join("libawg.so"))
+}
+
+/// Рабочая папка движка AmneziaWG (сокет управления и журнал).
+pub fn awg_work_dir() -> Option<PathBuf> {
+    paths().map(|p| p.files_dir.join("awg"))
+}
+
+async fn establish_with(app: &AppHandle, params: Option<TunParams>) -> Result<i32, ConnectError> {
     let vpn = app
         .try_state::<Vpn<Wry>>()
         .ok_or_else(|| ConnectError::VpnSetup("плагин VPN не найден".to_string()))?;
@@ -102,7 +133,7 @@ pub async fn establish(app: &AppHandle) -> Result<i32, ConnectError> {
         return Err(ConnectError::VpnPermissionDenied);
     }
     let established = vpn
-        .establish()
+        .establish(params)
         .await
         .map_err(|e| ConnectError::VpnSetup(e.to_string()))?;
     Ok(established.fd)

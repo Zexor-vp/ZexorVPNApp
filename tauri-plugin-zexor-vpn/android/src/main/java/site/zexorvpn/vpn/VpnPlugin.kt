@@ -21,6 +21,14 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 @InvokeArg
+class EstablishArgs {
+    var addresses: Array<String> = arrayOf()
+    var routes: Array<String> = arrayOf()
+    var dns: Array<String> = arrayOf()
+    var mtu: Int = 0
+}
+
+@InvokeArg
 class ToastArgs {
     var text: String = ""
 }
@@ -251,6 +259,22 @@ class VpnPlugin(private val activity: Activity) : Plugin(activity) {
 
     @Command
     fun establish(invoke: Invoke) {
+        // AmneziaWG присылает свои адреса, маршруты и DNS; без них создаётся интерфейс для xray по умолчанию.
+        val args = try {
+            invoke.parseArgs(EstablishArgs::class.java)
+        } catch (_: Exception) {
+            EstablishArgs()
+        }
+        ZexorVpnService.tunParams = if (args.addresses.isEmpty()) {
+            null
+        } else {
+            TunParams(
+                addresses = args.addresses.mapNotNull { parseCidr(it) },
+                routes = args.routes.mapNotNull { parseCidr(it) },
+                dns = args.dns.toList(),
+                mtu = if (args.mtu in 576..9000) args.mtu else 1280,
+            )
+        }
         Thread {
             try {
                 val ok = ZexorVpnService.start(activity.applicationContext).get(15, TimeUnit.SECONDS)

@@ -57,6 +57,17 @@ struct CrashText {
     text: String,
 }
 
+/// Параметры TUN-интерфейса системного VPN. Без них создаётся интерфейс для xray (весь трафик, адреса по умолчанию).
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TunParams {
+    /// Адреса интерфейса вида `10.0.0.2/32`.
+    pub addresses: Vec<String>,
+    /// Маршруты вида `0.0.0.0/0`, которые идут в туннель.
+    pub routes: Vec<String>,
+    pub dns: Vec<String>,
+    pub mtu: u16,
+}
+
 pub struct Vpn<R: Runtime>(pub PluginHandle<R>);
 
 impl<R: Runtime> Vpn<R> {
@@ -66,12 +77,13 @@ impl<R: Runtime> Vpn<R> {
         Ok(reply.granted)
     }
 
-    /// Поднимает TUN-интерфейс и возвращает его дескриптор.
-    pub async fn establish(&self) -> Result<Established, VpnError> {
-        Ok(self
-            .0
-            .run_mobile_plugin_async("establish", json!({}))
-            .await?)
+    /// Поднимает TUN-интерфейс и возвращает его дескриптор. `None` — интерфейс для xray по умолчанию.
+    pub async fn establish(&self, params: Option<TunParams>) -> Result<Established, VpnError> {
+        let payload = match params {
+            Some(params) => serde_json::to_value(params).unwrap_or_else(|_| json!({})),
+            None => json!({}),
+        };
+        Ok(self.0.run_mobile_plugin_async("establish", payload).await?)
     }
 
     pub async fn info(&self) -> Result<Info, VpnError> {

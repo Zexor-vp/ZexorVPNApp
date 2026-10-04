@@ -93,6 +93,8 @@ pub fn build_node_config(node: &Node, opts: &ConfigOptions) -> Value {
             }
         }),
         Node::Profile(profile) => routing::profile_config(profile, opts),
+        // AmneziaWG работает без xray: сюда этот узел попадать не должен (приложение запускает свой движок).
+        Node::Awg(_) => json!({}),
     }
 }
 

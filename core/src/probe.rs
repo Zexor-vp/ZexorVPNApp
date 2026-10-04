@@ -27,6 +27,16 @@ pub fn node_endpoint(node: &Node) -> (String, u16) {
         Node::Vless(n) => (n.address.clone(), n.port),
         Node::WireGuard(n) => (n.server_address.clone(), 443),
         Node::Profile(p) => p.endpoint().unwrap_or_default(),
+        // UDP: TCP-пинг неприменим, меряем 443 того же хоста (как для WireGuard).
+        Node::Awg(n) => (
+            n.config
+                .peer
+                .endpoint
+                .rsplit_once(':')
+                .map(|(host, _)| host.trim_matches(['[', ']']).to_string())
+                .unwrap_or_default(),
+            443,
+        ),
     }
 }
 

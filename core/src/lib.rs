@@ -9,6 +9,7 @@ pub mod adblock;
 pub mod api;
 pub mod apps;
 pub mod auth;
+pub mod awg;
 pub mod elevation;
 pub mod hwid;
 pub mod links;
