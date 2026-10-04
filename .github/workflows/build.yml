@@ -30,7 +30,25 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Тесты ядра
-        run: cargo test -p zexor-vpn-core --all-features
+        run: |
+          set -o pipefail
+          cargo test -p zexor-vpn-core --all-features 2>&1 | tee core-tests.log
+
+      # Журналы Actions без входа в GitHub не прочитать — хвост журнала тестов кладём в ветку ci-logs-core.
+      - name: Журнал тестов в ветку ci-logs-core
+        if: failure()
+        run: |
+          mkdir -p /tmp/ci-logs
+          tail -n 400 core-tests.log > /tmp/ci-logs/core-tests.log || true
+          echo "commit ${GITHUB_SHA}" > /tmp/ci-logs/README.txt
+          cd /tmp/ci-logs
+          git init -q
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git checkout -q -b ci-logs-core
+          git add .
+          git commit -q -m "core tests log for ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-logs-core
 
       - name: Установка mingw для кросс-компиляции
         # ring (зависимость reqwest/rustls) собирает C-код своим build-script'ом
