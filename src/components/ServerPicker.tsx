@@ -9,9 +9,12 @@ import type { NodeSummary } from '../lib/commands';
 /** `undefined` — ещё меряем, `null` — не отвечает, число — миллисекунды. */
 export type PingValue = number | null | undefined;
 
-/** У серверов AmneziaWG (UDP) пинга нет — вместо него метка протокола. */
+/** У UDP-протоколов (WireGuard, AmneziaWG) пинг приблизительный — расстояние до хоста; молчание хоста не значит,
+ * что сервер лежит, поэтому вместо «недоступен» показываем прочерк. */
 export function NodeBadge({ node, ms }: { node: { protocol: string }; ms: PingValue }) {
-  if (node.protocol === 'awg') return <span className="ping ping-good">AWG</span>;
+  if (ms === null && (node.protocol === 'awg' || node.protocol === 'wireguard')) {
+    return <span className="ping ping-pending">—</span>;
+  }
   return <PingBadge ms={ms} />;
 }
 

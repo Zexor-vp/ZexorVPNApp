@@ -11,7 +11,7 @@ import SupportPage from './pages/SupportPage';
 import { setAuthLostHandler } from './hooks/useAsync';
 import { useAutoUpdate, type UpdatePhase } from './hooks/useAutoUpdate';
 import { SupportUnreadProvider, useSupportUnread } from './hooks/useSupportUnread';
-import { useT } from './i18n';
+import { useI18n, useT } from './i18n';
 import { currentSession, setNativeLabels } from './lib/commands';
 
 /** Раз в час обновляем подписку: срок, трафик, список серверов. */
@@ -22,6 +22,7 @@ type Screen = { kind: 'loading' } | { kind: 'guest' } | { kind: 'app' };
 
 export default function App() {
   const t = useT();
+  const { lang } = useI18n();
   const [screen, setScreen] = useState<Screen>({ kind: 'loading' });
   const [tab, setTab] = useState<Tab | 'routing'>('home');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -35,8 +36,9 @@ export default function App() {
       tray_open: t('Открыть Zexor VPN'),
       tray_disconnect: t('Отключить VPN'),
       tray_quit: t('Выйти (VPN отключится)'),
+      language: lang,
     }).catch(() => undefined);
-  }, [t]);
+  }, [t, lang]);
 
   const goToLogin = useCallback(() => {
     setTab('login');

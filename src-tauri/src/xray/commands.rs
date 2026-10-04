@@ -296,11 +296,8 @@ pub async fn ping_nodes(
     source_id: Option<String>,
 ) -> Result<Vec<NodePing>, CommandError> {
     let nodes = fetch_nodes(&state, source_id.as_deref()).await?;
-    // AmneziaWG — UDP: TCP-пинг к нему не имеет смысла, такие серверы не меряем.
-    let nodes: Vec<_> = nodes
-        .into_iter()
-        .filter(|n| !n.is_balanced() && n.protocol() != "awg")
-        .collect();
+    // У WireGuard и AmneziaWG (UDP) пинг приблизительный: меряем расстояние до хоста по TCP 443.
+    let nodes: Vec<_> = nodes.into_iter().filter(|n| !n.is_balanced()).collect();
     let pings = probe::tcp_ping_many(&nodes, Duration::from_secs(3)).await;
     // Замеры серверов нашей подписки уходят на сервер (анонимно, можно отключить в профиле).
     if source_id.is_none() || source_id.as_deref() == Some(ACCOUNT_SOURCE) {
@@ -309,6 +306,8 @@ pub async fn ping_nodes(
             nodes
                 .iter()
                 .zip(&pings)
+                // В замеры доступности уходят только настоящие TCP-пинги (VLESS), не приблизительные UDP-протоколов.
+                .filter(|(node, _)| !matches!(node.protocol(), "awg" | "wireguard"))
                 .map(|(node, ms)| (node.remark().trim().to_string(), *ms))
                 .collect(),
         );

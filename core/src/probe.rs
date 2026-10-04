@@ -49,12 +49,34 @@ pub async fn tcp_ping(host: &str, port: u16, timeout: Duration) -> Option<u32> {
     }
 }
 
+/// Пинг для UDP-протоколов (WireGuard, AmneziaWG): на их порту TCP никто не слушает, поэтому стучимся на 443 хоста.
+/// Сам порт может быть закрыт — «соединение отклонено» приходит за одно RTT, и это тоже честный замер расстояния до
+/// сервера (хост жив). Только молчание до таймаута считаем «не отвечает».
+pub async fn tcp_ping_udp_host(host: &str, port: u16, timeout: Duration) -> Option<u32> {
+    let started = Instant::now();
+    match tokio::time::timeout(timeout, TcpStream::connect((host, port))).await {
+        Ok(Ok(_)) => Some(started.elapsed().as_millis().max(1) as u32),
+        Ok(Err(e)) if e.kind() == std::io::ErrorKind::ConnectionRefused => {
+            Some(started.elapsed().as_millis().max(1) as u32)
+        }
+        _ => None,
+    }
+}
+
 /// TCP-пинг всех узлов параллельно. Результат в том же порядке, что и вход.
 pub async fn tcp_ping_many(nodes: &[Node], timeout: Duration) -> Vec<Option<u32>> {
     let mut set = JoinSet::new();
     for (index, node) in nodes.iter().enumerate() {
         let (host, port) = node_endpoint(node);
-        set.spawn(async move { (index, tcp_ping(&host, port, timeout).await) });
+        let udp = matches!(node, Node::WireGuard(_) | Node::Awg(_));
+        set.spawn(async move {
+            let ms = if udp {
+                tcp_ping_udp_host(&host, port, timeout).await
+            } else {
+                tcp_ping(&host, port, timeout).await
+            };
+            (index, ms)
+        });
     }
     let mut result = vec![None; nodes.len()];
     while let Some(joined) = set.join_next().await {

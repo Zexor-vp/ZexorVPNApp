@@ -160,6 +160,8 @@ pub struct NativeLabelsInput {
     pub tray_open: String,
     pub tray_disconnect: String,
     pub tray_quit: String,
+    #[serde(default)]
+    pub language: String,
 }
 
 #[tauri::command]
@@ -170,6 +172,7 @@ pub fn set_native_labels(state: State<'_, AppState>, labels: NativeLabelsInput) 
         current.tray_open = labels.tray_open.clone();
         current.tray_disconnect = labels.tray_disconnect.clone();
         current.tray_quit = labels.tray_quit.clone();
+        current.language = labels.language.clone();
     }
     #[cfg(desktop)]
     if let Some(items) = state.tray_items.lock().unwrap().as_ref() {

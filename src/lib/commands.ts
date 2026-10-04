@@ -270,6 +270,8 @@ export interface NativeLabels {
   tray_open: string;
   tray_disconnect: string;
   tray_quit: string;
+  /** Код языка интерфейса: по нему сервер называет серверы AmneziaWG/WireGuard. */
+  language: string;
 }
 
 export const setNativeLabels = (labels: NativeLabels): Promise<void> => invoke('set_native_labels', { labels });

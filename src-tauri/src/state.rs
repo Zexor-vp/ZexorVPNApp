@@ -86,6 +86,8 @@ pub struct NativeLabels {
     pub tray_open: String,
     pub tray_disconnect: String,
     pub tray_quit: String,
+    /// Язык интерфейса (код): по нему сервер называет серверы AmneziaWG/WireGuard.
+    pub language: String,
 }
 
 impl Default for NativeLabels {
@@ -95,6 +97,7 @@ impl Default for NativeLabels {
             tray_open: "Открыть Zexor VPN".to_string(),
             tray_disconnect: "Отключить VPN".to_string(),
             tray_quit: "Выйти (VPN отключится)".to_string(),
+            language: String::new(),
         }
     }
 }

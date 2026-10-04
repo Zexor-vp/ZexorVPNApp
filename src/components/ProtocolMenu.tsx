@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { CheckIcon, ChevronDownIcon } from './Icons';
 import { useOutsideClose } from '../hooks/useOutsideClose';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 
 export type ProtocolValue = 'vless' | 'wireguard' | 'awg';
 
@@ -22,12 +22,17 @@ interface Props {
 /** Компактная кнопка-«пилюля» с всплывающим окном выбора протокола. */
 export default function ProtocolMenu({ value, available, onChange, disabled }: Props) {
   const t = useT();
+  const { lang } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useOutsideClose(ref, open, close);
 
-  const options = OPTIONS.filter((o) => o.value === 'vless' || available.includes(o.value));
+  // Для русского и персидского интерфейса WireGuard (в России и Иране он заблокирован) стоит в списке последним.
+  const wireguardLast = lang === 'ru' || lang === 'fa';
+  const options = OPTIONS.filter((o) => o.value === 'vless' || available.includes(o.value)).sort(
+    (a, b) => Number(wireguardLast && a.value === 'wireguard') - Number(wireguardLast && b.value === 'wireguard'),
+  );
   const current = OPTIONS.find((o) => o.value === value) ?? OPTIONS[0];
 
   return (

@@ -191,39 +191,49 @@ async fn account_subscription_url(state: &AppState) -> Result<String, ConnectErr
         .ok_or(ConnectError::NoSubscription)
 }
 
-/// Серверы AmneziaWG аккаунта (`<ссылка подписки>/awg`). Только Android — на других платформах движка пока нет.
-/// Любая ошибка (нет AmneziaWG у серверов, сервис недоступен) — просто пустой список: остальные протоколы работают.
-#[allow(unused_variables)]
-async fn fetch_account_awg_nodes(url: &str) -> Vec<Node> {
+/// Дополнительные протоколы аккаунта: WireGuard (`<ссылка подписки>/wg`, везде) и AmneziaWG (`/awg`, только Android —
+/// на других платформах движка пока нет). Основная ссылка подписки остаётся обычной для Happ и других клиентов, а
+/// приложение берёт все протоколы сразу и выбирает у себя. Названия серверов сервер подбирает по языку интерфейса.
+/// Любая ошибка (нет протокола у серверов, сервис недоступен) — просто пустой список: остальные протоколы работают.
+async fn fetch_account_extra_nodes(state: &AppState, url: &str) -> Vec<Node> {
+    if !zexor_vpn_core::sources::is_zexor_service_url(url) {
+        return Vec::new();
+    }
+    let base = url
+        .split(['?', '#'])
+        .next()
+        .unwrap_or(url)
+        .trim_end_matches('/')
+        .to_string();
+    let language = state.labels.lock().unwrap().language.clone();
+    let suffix = if language.is_empty() {
+        String::new()
+    } else {
+        format!("?lang={language}")
+    };
+    let hwid = zexor_vpn_core::hwid::load_or_create();
+
+    #[allow(unused_mut)]
+    let mut paths = vec!["wg"];
     #[cfg(target_os = "android")]
-    {
-        if !zexor_vpn_core::sources::is_zexor_service_url(url) {
-            return Vec::new();
-        }
-        let base = url
-            .split(['?', '#'])
-            .next()
-            .unwrap_or(url)
-            .trim_end_matches('/');
-        let hwid = zexor_vpn_core::hwid::load_or_create();
+    paths.push("awg");
+
+    let mut found = Vec::new();
+    for path in paths {
         let headers = zexor_vpn_core::hwid::subscription_headers(&hwid);
-        let awg_url = format!("{base}/awg");
-        let request = download_with_headers(&awg_url, headers);
+        let request = download_with_headers(&format!("{base}/{path}{suffix}"), headers);
         let Ok(Ok(body)) = tokio::time::timeout(std::time::Duration::from_secs(10), request).await
         else {
-            return Vec::new();
+            continue;
         };
-        return zexor_vpn_core::parse_nodes(&body)
-            .map(|nodes| {
-                nodes
-                    .into_iter()
-                    .filter(|n| matches!(n, Node::Awg(_)))
-                    .collect()
-            })
-            .unwrap_or_default();
+        if let Ok(nodes) = zexor_vpn_core::parse_nodes(&body) {
+            found.extend(nodes.into_iter().filter(|n| match path {
+                "awg" => matches!(n, Node::Awg(_)),
+                _ => matches!(n, Node::WireGuard(_)),
+            }));
+        }
     }
-    #[cfg(not(target_os = "android"))]
-    Vec::new()
+    found
 }
 
 /// Скачивает и разбирает актуальный список узлов выбранной подписки: `None` или
@@ -240,9 +250,8 @@ pub async fn fetch_nodes(
             if let Some(reason) = zexor_vpn_core::placeholder_reason(&nodes) {
                 return Err(ConnectError::SubscriptionRejected(reason.to_string()));
             }
-            // Серверы AmneziaWG приходят отдельным запросом: основная ссылка подписки остаётся обычной для Happ и
-            // других клиентов, а приложение берёт все протоколы сразу и выбирает у себя.
-            nodes.extend(fetch_account_awg_nodes(&url).await);
+            // WireGuard и AmneziaWG приходят отдельными запросами (см. `fetch_account_extra_nodes`).
+            nodes.extend(fetch_account_extra_nodes(state, &url).await);
             return Ok(nodes);
         }
         Some(id) => {
