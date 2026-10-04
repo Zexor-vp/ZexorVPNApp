@@ -221,7 +221,8 @@ async fn fetch_account_extra_nodes(state: &AppState, url: &str) -> Vec<Node> {
     let mut found = Vec::new();
     for path in paths {
         let headers = zexor_vpn_core::hwid::subscription_headers(&hwid);
-        let request = download_with_headers(&format!("{base}/{path}{suffix}"), headers);
+        let url = format!("{base}/{path}{suffix}");
+        let request = download_with_headers(&url, headers);
         let Ok(Ok(body)) = tokio::time::timeout(std::time::Duration::from_secs(10), request).await
         else {
             continue;
