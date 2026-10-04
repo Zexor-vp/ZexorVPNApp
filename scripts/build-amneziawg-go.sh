@@ -36,6 +36,33 @@ open(p, "w").write(s)
 PY
 fi
 
+# Второй патч: обычное приложение Android не имеет права менять MTU и слушать netlink у TUN, который ему выдал
+# системный VPN (ошибка "failed to set MTU of TUN device: permission denied"). В апстриме для этого есть
+# CreateUnmonitoredTUNFromFD (его использует и wireguard-android): он берёт готовый дескриптор как есть,
+# а MTU задаёт сам VpnService.
+if [ -f ipc/uapi_unix.go ]; then
+python3 - <<'PY'
+p = "main.go"
+s = open(p).read()
+old = """		file := os.NewFile(uintptr(fd), "")
+		return tun.CreateTUNFromFile(file, device.DefaultMTU)"""
+assert old in s, "не нашли CreateTUNFromFile в main.go — апстрим изменился"
+s = s.replace(old, """		dev, _, err := tun.CreateUnmonitoredTUNFromFD(int(fd))
+		return dev, err""", 1)
+# Без netlink-событий устройство само не «поднимается» — вызываем Up() вручную (так делает и wireguard-android).
+old = """	logger.Verbosef("Device started")"""
+assert old in s, "не нашли строку Device started в main.go — апстрим изменился"
+s = s.replace(old, old + """
+
+	if os.Getenv(ENV_WG_TUN_FD) != "" {
+		if err := device.Up(); err != nil {
+			logger.Errorf("Failed to bring device up: %v", err)
+		}
+	}""", 1)
+open(p, "w").write(s)
+PY
+fi
+
 # Текст лицензии (MIT) нужно поставлять вместе с бинарником.
 if [ -n "${LICENSE_OUT:-}" ]; then
   mkdir -p "$(dirname "$LICENSE_OUT")"
