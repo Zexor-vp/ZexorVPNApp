@@ -23,6 +23,8 @@ pub struct SettingsView {
     pub telemetry: bool,
     /// Пользователь уже ответил на вопрос о согласии.
     pub telemetry_decided: bool,
+    /// Выбранный в приложении протокол подписки аккаунта: `vless`, `wireguard` или `awg`.
+    pub protocol: String,
 }
 
 fn view(settings: &AppSettings) -> SettingsView {
@@ -34,6 +36,7 @@ fn view(settings: &AppSettings) -> SettingsView {
         elevated: zexor_vpn_core::elevation::is_elevated(),
         telemetry: settings.telemetry_allowed(),
         telemetry_decided: settings.telemetry_decided,
+        protocol: settings.protocol.clone(),
     }
 }
 
@@ -120,6 +123,22 @@ pub fn restart_as_admin(app: AppHandle, state: State<'_, AppState>) -> Result<()
     state.shutdown_blocking();
     app.exit(0);
     Ok(())
+}
+
+/// Запоминает протокол, выбранный на этом устройстве. Протокол обычной ссылки подписки (то, что получают Happ и
+/// другие клиенты) не меняется — он выбирается в кабинете или боте.
+#[tauri::command]
+pub fn set_protocol(
+    state: State<'_, AppState>,
+    protocol: String,
+) -> Result<SettingsView, CommandError> {
+    update(&state, |s| {
+        if !matches!(protocol.as_str(), "vless" | "wireguard" | "awg") {
+            return Err("неизвестный протокол".to_string());
+        }
+        s.protocol = protocol;
+        Ok(())
+    })
 }
 
 #[tauri::command]

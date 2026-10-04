@@ -14,7 +14,7 @@ const nodes = () =>
 let loggedIn = location.search.includes('account');
 let connected: string | null = null;
 let connectedAuto = false;
-const settings = { auto: false, tunnel_mode: 'proxy', routing_mode: 'exclude', routing_apps: ['steam.exe'] as string[], elevated: false, telemetry: true };
+const settings = { auto: false, tunnel_mode: 'proxy', routing_mode: 'exclude', routing_apps: ['steam.exe'] as string[], elevated: false, telemetry: true, protocol: 'vless' };
 const accountSource = { id: 'account', name: 'Zexor', removable: false };
 const ownSources: { id: string; name: string; removable: boolean }[] = [];
 let blockedCount = 128;
@@ -41,6 +41,7 @@ export async function invoke(cmd: string, args: any = {}): Promise<any> {
     case 'set_tunnel_mode': if (args.mode === 'tun' && !settings.elevated) throw { kind: 'NeedsElevation', message: 'режиму TUN нужны права администратора' }; settings.tunnel_mode = args.mode; return settings;
     case 'restart_as_admin': settings.elevated = true; settings.tunnel_mode = 'tun'; return null;
     case 'set_native_labels': return null;
+    case 'set_protocol': settings.protocol = args.protocol; return settings;
     case 'set_telemetry': settings.telemetry = args.enabled; return settings;
     case 'set_routing_mode': settings.routing_mode = args.mode; return settings;
     case 'add_routing_app': { const name = String(args.name).split(/[\\/]/).pop() as string; if (settings.routing_apps.includes(name)) throw { kind: 'Other', message: 'это приложение уже в списке' }; settings.routing_apps.push(name); return settings; }

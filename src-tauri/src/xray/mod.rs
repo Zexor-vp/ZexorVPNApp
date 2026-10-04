@@ -191,6 +191,32 @@ async fn account_subscription_url(state: &AppState) -> Result<String, ConnectErr
         .ok_or(ConnectError::NoSubscription)
 }
 
+/// Серверы AmneziaWG аккаунта (`<ссылка подписки>/awg`). Только Android — на других платформах движка пока нет.
+/// Любая ошибка (нет AmneziaWG у серверов, сервис недоступен) — просто пустой список: остальные протоколы работают.
+#[allow(unused_variables)]
+async fn fetch_account_awg_nodes(url: &str) -> Vec<Node> {
+    #[cfg(target_os = "android")]
+    {
+        if !zexor_vpn_core::sources::is_zexor_service_url(url) {
+            return Vec::new();
+        }
+        let base = url.split(['?', '#']).next().unwrap_or(url).trim_end_matches('/');
+        let hwid = zexor_vpn_core::hwid::load_or_create();
+        let headers = zexor_vpn_core::hwid::subscription_headers(&hwid);
+        let awg_url = format!("{base}/awg");
+        let request = download_with_headers(&awg_url, headers);
+        let Ok(Ok(body)) = tokio::time::timeout(std::time::Duration::from_secs(10), request).await
+        else {
+            return Vec::new();
+        };
+        return zexor_vpn_core::parse_nodes(&body)
+            .map(|nodes| nodes.into_iter().filter(|n| matches!(n, Node::Awg(_))).collect())
+            .unwrap_or_default();
+    }
+    #[cfg(not(target_os = "android"))]
+    Vec::new()
+}
+
 /// Скачивает и разбирает актуальный список узлов выбранной подписки: `None` или
 /// `"account"` — подписка аккаунта, иначе id добавленной пользователем.
 pub async fn fetch_nodes(
@@ -200,7 +226,15 @@ pub async fn fetch_nodes(
     let body = match source_id {
         None | Some(ACCOUNT_SOURCE) => {
             let url = account_subscription_url(state).await?;
-            download_account_subscription(&url).await?
+            let body = download_account_subscription(&url).await?;
+            let mut nodes = zexor_vpn_core::parse_nodes(&body)?;
+            if let Some(reason) = zexor_vpn_core::placeholder_reason(&nodes) {
+                return Err(ConnectError::SubscriptionRejected(reason.to_string()));
+            }
+            // Серверы AmneziaWG приходят отдельным запросом: основная ссылка подписки остаётся обычной для Happ и
+            // других клиентов, а приложение берёт все протоколы сразу и выбирает у себя.
+            nodes.extend(fetch_account_awg_nodes(&url).await);
+            return Ok(nodes);
         }
         Some(id) => {
             let source = sources::find(id).ok_or(ConnectError::SourceNotFound)?;
@@ -621,11 +655,31 @@ pub async fn connect_auto(
     nodes: &[Node],
     source_id: &str,
 ) -> Result<AutoOutcome, ConnectError> {
+    // На аккаунте работает только протокол, выбранный в приложении (если таких серверов нет — берём что есть).
+    let nodes: Vec<Node> = if source_id == ACCOUNT_SOURCE {
+        let chosen = state.settings.lock().unwrap().protocol.clone();
+        let matching: Vec<Node> = nodes.iter().filter(|n| n.protocol() == chosen).cloned().collect();
+        if matching.iter().any(|n| !n.is_balanced()) {
+            matching
+        } else {
+            nodes.to_vec()
+        }
+    } else {
+        nodes.to_vec()
+    };
+    let nodes = nodes.as_slice();
     let servers = plain_servers(nodes);
 
-    // Протокол AmneziaWG (подписка аккаунта на нём или отдельный конфиг): у него свой движок, xray-балансировщик
-    // не нужен — подключаемся к первому серверу напрямую.
-    if let Some(awg) = servers.iter().find(|n| matches!(n, Node::Awg(_))) {
+    // Протокол AmneziaWG (выбран на аккаунте или отдельный конфиг): у него свой движок, xray-балансировщик
+    // не нужен — подключаемся к одному из серверов напрямую.
+    let awg_servers: Vec<&Node> = servers.iter().filter(|n| matches!(n, Node::Awg(_))).collect();
+    if !awg_servers.is_empty() {
+        let pick = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.subsec_nanos() as usize)
+            .unwrap_or(0)
+            % awg_servers.len();
+        let awg = awg_servers[pick];
         connect_to_node(app, state, awg, source_id).await?;
         return Ok(AutoOutcome {
             label: awg.remark().to_string(),

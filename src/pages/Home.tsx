@@ -11,7 +11,7 @@ import { isMobile } from '../lib/platform';
 import ServerPicker, { type PingValue } from '../components/ServerPicker';
 import { BoltIcon, PlusIcon, RefreshIcon, TrashIcon } from '../components/Icons';
 import { reportAuthLoss, useAsync } from '../hooks/useAsync';
-import { getDevices, getProtocol, getSubscription, setProtocol } from '../lib/cabinet';
+import { getDevices, getSubscription } from '../lib/cabinet';
 import {
   ACCOUNT_SOURCE,
   addSource,
@@ -30,6 +30,7 @@ import {
   restartAsAdmin,
   setAuto,
   setTunnelMode,
+  setAppProtocol,
   type AppSettings,
   type ConnectionStatus,
   type TunnelMode,
@@ -123,7 +124,6 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
 
   // Данные аккаунта гость не запрашивает: без сессии сервер ответил бы «нужен вход».
   const subscription = useAsync(() => (guest ? Promise.resolve(null) : getSubscription()), [guest]);
-  const protocol = useAsync(() => (guest ? Promise.resolve(null) : getProtocol()), [guest]);
   const devices = useAsync(() => (guest ? Promise.resolve(null) : getDevices()), [guest]);
 
   // Порядок серверов случайный: при каждом заходе на главную список перемешивается заново (как в Happ), а пока
@@ -137,6 +137,9 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
     return [...list].sort((a, b) => (keys.get(a.remark) ?? 0) - (keys.get(b.remark) ?? 0));
   }, []);
 
+  const [allProtocols, setAllProtocols] = useState<string[]>(['vless']);
+  const chosenRef = useRef('vless');
+
   const loadNodes = useCallback(async (id: string) => {
     const mine = ++loadSeq.current;
     setNodesError(null);
@@ -146,8 +149,17 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
       return;
     }
     try {
-      const list = shuffled(await listNodes(id));
+      const all = shuffled(await listNodes(id));
       if (mine !== loadSeq.current) return;
+      // У аккаунта приходят все протоколы сразу; показываем тот, что выбран на этом устройстве (по умолчанию VLESS).
+      let list = all;
+      if (id === ACCOUNT_SOURCE) {
+        const present = Array.from(new Set(all.map((n) => n.protocol)));
+        setAllProtocols(present);
+        const chosen = present.includes(chosenRef.current) ? chosenRef.current : 'vless';
+        const filtered = all.filter((n) => n.protocol === chosen);
+        if (filtered.length > 0) list = filtered;
+      }
       setNodes(list);
       const saved = readSelection(id);
       setSelectedNode((current) => {
@@ -210,7 +222,6 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
     try {
       await Promise.all([
         subscription.reload(),
-        protocol.reload(),
         devices.reload(),
         listSources()
           .then((list) => setSources(visibleSources(list)))
@@ -344,8 +355,9 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
         await disconnect();
         setStatus({ connected: false, node_remark: null, source_id: null, auto: false });
       }
-      await setProtocol(next);
-      await Promise.all([protocol.reload(), loadNodes(sourceId)]);
+      chosenRef.current = next;
+      setSettings(await setAppProtocol(next));
+      await loadNodes(sourceId);
     } catch (err) {
       if (!reportAuthLoss(err)) setError(errorMessage(err));
     } finally {
@@ -429,14 +441,17 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
   const tunnelMode = settings?.tunnel_mode ?? 'proxy';
   const sub = subscription.data?.subscription ?? null;
   const hasSubscription = subscription.data?.has_subscription ?? false;
-  const protocolInfo = protocol.data;
-  // AmneziaWG пока умеет только Android-версия (движок для Windows ещё не готов).
+  // Протокол выбирается здесь, на устройстве, и не влияет на обычную ссылку подписки (Happ и др.). В меню — те
+  // протоколы, серверы которых есть в подписке. AmneziaWG пока умеет только Android-версия.
   const availableProtocols: ('wireguard' | 'awg')[] = [
-    ...(protocolInfo?.protocol_switch_available ? (['wireguard'] as const) : []),
-    ...(isMobile && protocolInfo?.awg_available ? (['awg'] as const) : []),
+    ...(allProtocols.includes('wireguard') ? (['wireguard'] as const) : []),
+    ...(isMobile && allProtocols.includes('awg') ? (['awg'] as const) : []),
   ];
   const canSwitchProtocol = isAccount && availableProtocols.length > 0;
-  const activeProtocol = (protocolInfo?.active_protocol ?? 'vless') as 'vless' | 'wireguard' | 'awg';
+  const chosenProtocol = (settings?.protocol ?? 'vless') as 'vless' | 'wireguard' | 'awg';
+  const activeProtocol =
+    chosenProtocol === 'vless' || availableProtocols.includes(chosenProtocol) ? chosenProtocol : 'vless';
+  chosenRef.current = settings?.protocol ?? chosenRef.current;
 
   return (
     <PageShell

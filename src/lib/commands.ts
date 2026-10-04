@@ -232,6 +232,8 @@ export interface AppSettings {
   telemetry: boolean;
   /** Пользователь уже ответил на вопрос о согласии на отправку анонимной статистики. */
   telemetry_decided: boolean;
+  /** Протокол, выбранный на этом устройстве для подписки аккаунта: vless, wireguard или awg. */
+  protocol: string;
 }
 
 export const appSettings = (): Promise<AppSettings> => invoke('app_settings');
@@ -255,6 +257,10 @@ export const removeRoutingApp = (name: string): Promise<AppSettings> =>
 
 /** Запущенные приложения пользователя — для выбора из списка. */
 export const listRunningApps = (): Promise<string[]> => invoke('list_running_apps');
+
+/** Запоминает протокол на этом устройстве. Протокол обычной ссылки подписки (для Happ и др.) не меняет. */
+export const setAppProtocol = (protocol: 'vless' | 'wireguard' | 'awg'): Promise<AppSettings> =>
+  invoke('set_protocol', { protocol });
 
 export const setTelemetry = (enabled: boolean): Promise<AppSettings> => invoke('set_telemetry', { enabled });
 

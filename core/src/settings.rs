@@ -43,6 +43,9 @@ pub struct AppSettings {
     pub telemetry_decided: bool,
     /// Последняя «эпоха» команды «обновить подписку» от админа, которую приложение уже обработало.
     pub last_sync_epoch: Option<i64>,
+    /// Протокол, который пользователь выбрал в приложении для подписки аккаунта: `vless`, `wireguard` или `awg`.
+    /// Это выбор только этого устройства: он не меняет протокол обычной ссылки подписки (для Happ и т. п.).
+    pub protocol: String,
 }
 
 impl Default for AppSettings {
@@ -54,6 +57,7 @@ impl Default for AppSettings {
             telemetry_enabled: false,
             telemetry_decided: false,
             last_sync_epoch: None,
+            protocol: "vless".to_string(),
         }
     }
 }

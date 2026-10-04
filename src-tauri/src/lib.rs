@@ -141,6 +141,7 @@ pub fn run() {
             settings::remove_routing_app,
             settings::list_running_apps,
             settings::set_telemetry,
+            settings::set_protocol,
             settings::set_native_labels,
             apk_update::check_apk_update,
             cabinet::cabinet_request,
