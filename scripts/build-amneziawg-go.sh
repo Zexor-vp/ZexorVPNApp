@@ -10,6 +10,8 @@ AWG_COMMIT="b5928efb6ca19f0153958460c3d141f04abc5c2e"
 GOOS_TARGET="${1:?GOOS}"
 GOARCH_TARGET="${2:?GOARCH}"
 OUTPUT="$(realpath -m "${3:?путь вывода}")"
+# Путь к лицензии тоже делаем абсолютным: дальше скрипт переходит во временную папку.
+if [ -n "${LICENSE_OUT:-}" ]; then LICENSE_OUT="$(realpath -m "$LICENSE_OUT")"; fi
 
 WORK="$(mktemp -d)"
 git init -q "$WORK"
