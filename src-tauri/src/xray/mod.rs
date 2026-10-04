@@ -200,7 +200,11 @@ async fn fetch_account_awg_nodes(url: &str) -> Vec<Node> {
         if !zexor_vpn_core::sources::is_zexor_service_url(url) {
             return Vec::new();
         }
-        let base = url.split(['?', '#']).next().unwrap_or(url).trim_end_matches('/');
+        let base = url
+            .split(['?', '#'])
+            .next()
+            .unwrap_or(url)
+            .trim_end_matches('/');
         let hwid = zexor_vpn_core::hwid::load_or_create();
         let headers = zexor_vpn_core::hwid::subscription_headers(&hwid);
         let awg_url = format!("{base}/awg");
@@ -210,7 +214,12 @@ async fn fetch_account_awg_nodes(url: &str) -> Vec<Node> {
             return Vec::new();
         };
         return zexor_vpn_core::parse_nodes(&body)
-            .map(|nodes| nodes.into_iter().filter(|n| matches!(n, Node::Awg(_))).collect())
+            .map(|nodes| {
+                nodes
+                    .into_iter()
+                    .filter(|n| matches!(n, Node::Awg(_)))
+                    .collect()
+            })
             .unwrap_or_default();
     }
     #[cfg(not(target_os = "android"))]
@@ -658,7 +667,11 @@ pub async fn connect_auto(
     // На аккаунте работает только протокол, выбранный в приложении (если таких серверов нет — берём что есть).
     let nodes: Vec<Node> = if source_id == ACCOUNT_SOURCE {
         let chosen = state.settings.lock().unwrap().protocol.clone();
-        let matching: Vec<Node> = nodes.iter().filter(|n| n.protocol() == chosen).cloned().collect();
+        let matching: Vec<Node> = nodes
+            .iter()
+            .filter(|n| n.protocol() == chosen)
+            .cloned()
+            .collect();
         if matching.iter().any(|n| !n.is_balanced()) {
             matching
         } else {
@@ -672,7 +685,10 @@ pub async fn connect_auto(
 
     // Протокол AmneziaWG (выбран на аккаунте или отдельный конфиг): у него свой движок, xray-балансировщик
     // не нужен — подключаемся к одному из серверов напрямую.
-    let awg_servers: Vec<&Node> = servers.iter().filter(|n| matches!(n, Node::Awg(_))).collect();
+    let awg_servers: Vec<&Node> = servers
+        .iter()
+        .filter(|n| matches!(n, Node::Awg(_)))
+        .collect();
     if !awg_servers.is_empty() {
         let pick = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
