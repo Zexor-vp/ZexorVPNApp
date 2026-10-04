@@ -56,6 +56,10 @@ pub enum ConnectError {
 /// Скачивает тело подписки по ссылке. Свой User-Agent нужен, чтобы панель отдала
 /// обычный список ссылок, а не JSON-профили для Happ.
 pub async fn download_subscription(url: &str) -> Result<String, ConnectError> {
+    // Наши собственные адреса просят идентификатор устройства, остальным сервисам его не отдаём.
+    if zexor_vpn_core::sources::is_zexor_service_url(url) {
+        return download_account_subscription(url).await;
+    }
     download_with_headers(url, Vec::new()).await
 }
 

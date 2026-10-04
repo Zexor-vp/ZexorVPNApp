@@ -46,6 +46,27 @@ pub fn save_to(path: &std::path::Path, sources: &[Source]) -> std::io::Result<()
     std::fs::write(path, text)
 }
 
+/// Подписки на наших собственных адресах (в том числе добавленные вручную по ссылке, например аккаунт близкого человека)
+/// панель отдаёт только устройству, которое себя назвало (HWID). Чужим сервисам идентификатор устройства не отправляем,
+/// а нашим — обязательно, иначе вместо серверов приходит заглушка «HWID не поддерживается».
+pub fn is_zexor_service_url(url: &str) -> bool {
+    const OWN_HOSTS: &[&str] = &[
+        "sub.zexorvpn.site",
+        "sub.zexor.site",
+        "cabinet.zexorvpn.site",
+        "cabinet.zexor.site",
+    ];
+    let Some(rest) = url.strip_prefix("https://") else {
+        return false;
+    };
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    if authority.contains('@') {
+        return false;
+    }
+    let host = authority.split(':').next().unwrap_or("");
+    OWN_HOSTS.iter().any(|own| host.eq_ignore_ascii_case(own))
+}
+
 pub fn find(id: &str) -> Option<Source> {
     load().into_iter().find(|s| s.id == id)
 }
@@ -73,6 +94,22 @@ pub fn new_id() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn own_subscription_hosts_are_recognised() {
+        assert!(is_zexor_service_url(
+            "https://sub.zexorvpn.site/api/sub/abc"
+        ));
+        assert!(is_zexor_service_url("https://SUB.zexor.site/api/sub/abc"));
+        assert!(!is_zexor_service_url(
+            "https://sub.zexorvpn.site.evil.example/x"
+        ));
+        assert!(!is_zexor_service_url(
+            "https://sub.zexorvpn.site@evil.example/x"
+        ));
+        assert!(!is_zexor_service_url("http://sub.zexorvpn.site/x"));
+        assert!(!is_zexor_service_url("https://example.com/sub"));
+    }
 
     #[test]
     fn roundtrip_through_disk() {
