@@ -263,6 +263,33 @@ impl AwgConfig {
     }
 }
 
+/// Строка подписки для приложения: `awg://<конфиг в base64url>#<имя сервера>` (так её отдаёт наш сервер подписок).
+pub fn parse_awg_uri(line: &str) -> Result<AwgNode, AwgError> {
+    let rest = line
+        .trim()
+        .strip_prefix("awg://")
+        .ok_or_else(|| AwgError::Config("это не ссылка awg://".to_string()))?;
+    let (token, fragment) = rest.split_once('#').unwrap_or((rest, ""));
+    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(token.trim_end_matches('='))
+        .map_err(|_| AwgError::Config("конфиг в ссылке awg:// записан неверно".to_string()))?;
+    let text = String::from_utf8(bytes)
+        .map_err(|_| AwgError::Config("конфиг в ссылке awg:// не текст".to_string()))?;
+    let config = AwgConfig::parse(&text)?;
+    let remark = percent_encoding::percent_decode_str(fragment)
+        .decode_utf8_lossy()
+        .trim()
+        .to_string();
+    Ok(AwgNode {
+        remark: if remark.is_empty() {
+            "AmneziaWG".to_string()
+        } else {
+            remark
+        },
+        config,
+    })
+}
+
 /// Адрес в виде `(ip, длина маски)` — для системного VPN, который принимает их раздельно.
 pub fn split_cidr(cidr: &str) -> Option<(String, u8)> {
     let (ip, prefix) = cidr.split_once('/')?;
@@ -522,6 +549,16 @@ mod tests {
     }
 
     #[test]
+    fn awg_uri_roundtrip() {
+        let token = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(sample().as_bytes());
+        let node = parse_awg_uri(&format!("awg://{token}#Czech%20Republic")).unwrap();
+        assert_eq!(node.remark, "Czech Republic");
+        assert_eq!(node.config.peer.endpoint, "13.143.183.141:51825");
+        assert!(parse_awg_uri("awg://!!!").is_err());
+        assert!(parse_awg_uri("vless://x").is_err());
+    }
+
+    #[test]
     fn cidr_split() {
         assert_eq!(
             split_cidr("10.0.0.2/32"),
@@ -584,8 +621,12 @@ mod tests {
             "awgtest"
         ]));
         assert!(run(&["link", "set", "awgtest", "up"]));
+        // Адрес клиента /32 — связанного маршрута нет, поэтому маршрут к серверу внутри туннеля добавляем вручную
+        // (в приложении его создаёт системный VPN). Адрес можно сменить переменной AWG_TEST_PING.
+        let target = std::env::var("AWG_TEST_PING").unwrap_or_else(|_| "10.29.29.1".to_string());
+        run(&["route", "add", &format!("{target}/32"), "dev", "awgtest"]);
         let ping = Command::new("ping")
-            .args(["-c", "3", "-W", "2", "-I", "awgtest", "10.29.29.1"])
+            .args(["-c", "3", "-W", "2", "-I", "awgtest", &target])
             .output()
             .unwrap();
         let ok = ping.status.success();

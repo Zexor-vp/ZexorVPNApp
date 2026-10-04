@@ -336,7 +336,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
     }
   }
 
-  async function handleProtocolChange(next: 'vless' | 'wireguard') {
+  async function handleProtocolChange(next: 'vless' | 'wireguard' | 'awg') {
     setError(null);
     setBusy(true);
     try {
@@ -430,8 +430,13 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
   const sub = subscription.data?.subscription ?? null;
   const hasSubscription = subscription.data?.has_subscription ?? false;
   const protocolInfo = protocol.data;
-  const canSwitchProtocol = isAccount && !!protocolInfo?.protocol_switch_available;
-  const activeProtocol = (protocolInfo?.active_protocol ?? 'vless') as 'vless' | 'wireguard';
+  // AmneziaWG пока умеет только Android-версия (движок для Windows ещё не готов).
+  const availableProtocols: ('wireguard' | 'awg')[] = [
+    ...(protocolInfo?.protocol_switch_available ? (['wireguard'] as const) : []),
+    ...(isMobile && protocolInfo?.awg_available ? (['awg'] as const) : []),
+  ];
+  const canSwitchProtocol = isAccount && availableProtocols.length > 0;
+  const activeProtocol = (protocolInfo?.active_protocol ?? 'vless') as 'vless' | 'wireguard' | 'awg';
 
   return (
     <PageShell
@@ -518,7 +523,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
             <ModeSlider value={tunnelMode} disabled={busy || !settings} onChange={(mode) => void handleModeChange(mode)} />
           )}
           <div className="row" style={{ gap: '0.5rem' }}>
-            {canSwitchProtocol && <ProtocolMenu value={activeProtocol} disabled={busy} onChange={handleProtocolChange} />}
+            {canSwitchProtocol && <ProtocolMenu value={activeProtocol} available={availableProtocols} disabled={busy} onChange={handleProtocolChange} />}
             {!isAccount && (
               <button
                 className="icon-btn"

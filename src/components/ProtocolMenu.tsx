@@ -3,27 +3,31 @@ import { CheckIcon, ChevronDownIcon } from './Icons';
 import { useOutsideClose } from '../hooks/useOutsideClose';
 import { useT } from '../i18n';
 
-export type ProtocolValue = 'vless' | 'wireguard';
+export type ProtocolValue = 'vless' | 'wireguard' | 'awg';
 
 const OPTIONS: { value: ProtocolValue; short: string; title: string; hint: string; warn?: boolean }[] = [
   { value: 'vless', short: 'VLESS', title: 'VLESS (REALITY)', hint: 'Работает почти везде, в том числе в России и Иране' }, // i18n-key
   { value: 'wireguard', short: 'WireGuard', title: 'WireGuard', hint: 'Простой и быстрый, но не работает в России и Иране', warn: true }, // i18n-key
+  { value: 'awg', short: 'AmneziaWG', title: 'AmneziaWG', hint: 'Быстрый WireGuard с маскировкой от блокировок — на случай, если другие протоколы режутся' }, // i18n-key
 ];
 
 interface Props {
   value: ProtocolValue;
+  /** Какие протоколы показывать (VLESS есть всегда). */
+  available: ProtocolValue[];
   onChange: (value: ProtocolValue) => void;
   disabled?: boolean;
 }
 
 /** Компактная кнопка-«пилюля» с всплывающим окном выбора протокола. */
-export default function ProtocolMenu({ value, onChange, disabled }: Props) {
+export default function ProtocolMenu({ value, available, onChange, disabled }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useOutsideClose(ref, open, close);
 
+  const options = OPTIONS.filter((o) => o.value === 'vless' || available.includes(o.value));
   const current = OPTIONS.find((o) => o.value === value) ?? OPTIONS[0];
 
   return (
@@ -45,7 +49,7 @@ export default function ProtocolMenu({ value, onChange, disabled }: Props) {
           <span className="label" style={{ padding: '0.3rem 0.75rem 0.15rem', display: 'block' }}>
             {t('Протокол')}
           </span>
-          {OPTIONS.map((option) => (
+          {options.map((option) => (
             <button
               key={option.value}
               type="button"

@@ -623,6 +623,16 @@ pub async fn connect_auto(
 ) -> Result<AutoOutcome, ConnectError> {
     let servers = plain_servers(nodes);
 
+    // Протокол AmneziaWG (подписка аккаунта на нём или отдельный конфиг): у него свой движок, xray-балансировщик
+    // не нужен — подключаемся к первому серверу напрямую.
+    if let Some(awg) = servers.iter().find(|n| matches!(n, Node::Awg(_))) {
+        connect_to_node(app, state, awg, source_id).await?;
+        return Ok(AutoOutcome {
+            label: awg.remark().to_string(),
+            ms: None,
+        });
+    }
+
     if source_id == ACCOUNT_SOURCE {
         let is_wireguard = servers.iter().any(|n| n.protocol() == "wireguard");
         if !is_wireguard {
@@ -656,15 +666,6 @@ pub async fn connect_auto(
         .await?;
         return Ok(AutoOutcome {
             label: AUTO_LABEL.to_string(),
-            ms: None,
-        });
-    }
-
-    // Источник — конфиг AmneziaWG: выбирать не из чего, подключаемся к нему напрямую.
-    if let Some(awg) = servers.iter().find(|n| matches!(n, Node::Awg(_))) {
-        connect_to_node(app, state, awg, source_id).await?;
-        return Ok(AutoOutcome {
-            label: awg.remark().to_string(),
             ms: None,
         });
     }

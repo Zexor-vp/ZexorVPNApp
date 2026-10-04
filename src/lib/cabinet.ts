@@ -37,14 +37,16 @@ export const getSubscription = (): Promise<SubscriptionStatus> =>
   cabinetRequest('GET', `${API}/subscription/info`);
 
 export interface ProtocolInfo {
-  active_protocol: 'vless' | 'wireguard' | string;
+  active_protocol: 'vless' | 'wireguard' | 'awg' | string;
   protocol_switch_available: boolean;
+  /** AmneziaWG развёрнут на серверах подписки. */
+  awg_available?: boolean;
 }
 
 export const getProtocol = (): Promise<ProtocolInfo> =>
   cabinetRequest('GET', `${API}/subscription/protocol`);
 
-export const setProtocol = (protocol: 'vless' | 'wireguard'): Promise<ProtocolInfo> =>
+export const setProtocol = (protocol: 'vless' | 'wireguard' | 'awg'): Promise<ProtocolInfo> =>
   cabinetRequest('POST', `${API}/subscription/protocol`, { protocol });
 
 export interface RenewalOption {

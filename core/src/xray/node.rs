@@ -104,6 +104,8 @@ pub fn parse_nodes(body: &str) -> Result<Vec<Node>, ParseError> {
                 parse_vless_uri(line).ok().map(Node::Vless)
             } else if line.starts_with("wireguard://") {
                 parse_wireguard_uri(line).ok().map(Node::WireGuard)
+            } else if line.starts_with("awg://") {
+                crate::awg::parse_awg_uri(line).ok().map(Node::Awg)
             } else {
                 None
             }

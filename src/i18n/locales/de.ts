@@ -270,6 +270,7 @@ const dict: Record<string, string> = {
   "подписка недоступна: проверьте, что она активна и не превышен лимит устройств": "Das Abo ist nicht verfügbar: Prüfen Sie, ob es aktiv ist und das Geräte-Limit nicht überschritten wurde",
   "подписка не найдена — возможно, она удалена или ссылка изменилась": "Abo nicht gefunden – möglicherweise gelöscht oder der Link hat sich geändert",
   "слишком много запросов, повторите через минуту": "Zu viele Anfragen, versuchen Sie es in einer Minute erneut",
+  "Быстрый WireGuard с маскировкой от блокировок — на случай, если другие протоколы режутся": "Schnelles WireGuard mit Tarnung gegen Sperren – falls andere Protokolle blockiert werden",
   "Вставьте ссылку подписки другого сервиса или конфиг AmneziaWG (.conf) — серверы появятся в этом приложении рядом с вашими.": "Fügen Sie den Abo-Link eines anderen Dienstes oder eine AmneziaWG-Konfiguration (.conf) ein – die Server erscheinen in dieser App neben Ihren.",
   "https://… или текст конфига AmneziaWG": "https://… oder AmneziaWG-Konfigurationstext",
   "Выбрать файл .conf": ".conf-Datei wählen",
