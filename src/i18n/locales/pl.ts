@@ -354,5 +354,6 @@ const dict: Record<string, string> = {
   "локальный прокси не поднялся": "Lokalny proxy nie uruchomił się",
   "Подписка ({0} серв.)": "Subskrypcja (serwerów: {0})",
   "Другой сервис": "Inna usługa",
+  "Можно докупить не больше {n}": "Możesz dokupić maksymalnie {n}",
 };
 export default dict;

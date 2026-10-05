@@ -56,6 +56,13 @@ export default function SubscriptionPage() {
     };
   }, [extraDevices]);
 
+  // Запросили больше, чем можно докупить: сервер отвечает «можно максимум N» — возвращаем счётчик в допустимые границы.
+  useEffect(() => {
+    if (devicePrice?.available === false && devicePrice.can_add != null && extraDevices > devicePrice.can_add) {
+      setExtraDevices(Math.max(1, devicePrice.can_add));
+    }
+  }, [devicePrice, extraDevices]);
+
   async function refreshAll() {
     await Promise.all([subscription.reload(), purchase.reload(), devices.reload(), me.reload()]);
   }
@@ -239,12 +246,17 @@ export default function SubscriptionPage() {
           ) : (
             <div className="row">
               <div className="stepper">
-                <button aria-label={t('Меньше')} onClick={() => setExtraDevices((n) => Math.max(1, n - 1))}>
+                <button
+                  aria-label={t('Меньше')}
+                  disabled={extraDevices <= 1}
+                  onClick={() => setExtraDevices((n) => Math.max(1, n - 1))}
+                >
                   −
                 </button>
                 <span>{extraDevices}</span>
                 <button
                   aria-label={t('Больше')}
+                  disabled={extraDevices >= (devicePrice?.can_add ?? 10)}
                   onClick={() => setExtraDevices((n) => Math.min(devicePrice?.can_add ?? 10, n + 1))}
                 >
                   +
@@ -258,6 +270,11 @@ export default function SubscriptionPage() {
                 {t('Докупить')}{devicePrice?.total_price_label ? ` · ${devicePrice.total_price_label}` : ''}
               </Button>
             </div>
+          )}
+          {devicePrice?.available !== false && devicePrice?.can_add != null && (
+            <p className="muted" style={{ margin: 0 }}>
+              {t('Можно докупить не больше {n}', { n: devicePrice.can_add })}
+            </p>
           )}
         </section>
       )}
