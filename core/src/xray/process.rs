@@ -218,7 +218,7 @@ pub fn app_data_dir() -> PathBuf {
 }
 
 #[cfg(windows)]
-mod job {
+pub(crate) mod job {
     use std::os::windows::io::AsRawHandle;
     use std::process::Child;
 

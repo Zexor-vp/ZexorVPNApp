@@ -191,8 +191,8 @@ async fn account_subscription_url(state: &AppState) -> Result<String, ConnectErr
         .ok_or(ConnectError::NoSubscription)
 }
 
-/// Дополнительные протоколы аккаунта: WireGuard (`<ссылка подписки>/wg`, везде) и AmneziaWG (`/awg`, только Android —
-/// на других платформах движка пока нет). Основная ссылка подписки остаётся обычной для Happ и других клиентов, а
+/// Дополнительные протоколы аккаунта: WireGuard (`<ссылка подписки>/wg`) и AmneziaWG (`/awg`; движок есть на Android
+/// и Windows). Основная ссылка подписки остаётся обычной для Happ и других клиентов, а
 /// приложение берёт все протоколы сразу и выбирает у себя. Названия серверов сервер подбирает по языку интерфейса.
 /// Любая ошибка (нет протокола у серверов, сервис недоступен) — просто пустой список: остальные протоколы работают.
 async fn fetch_account_extra_nodes(state: &AppState, url: &str) -> Vec<Node> {
@@ -213,10 +213,7 @@ async fn fetch_account_extra_nodes(state: &AppState, url: &str) -> Vec<Node> {
     };
     let hwid = zexor_vpn_core::hwid::load_or_create();
 
-    #[allow(unused_mut)]
-    let mut paths = vec!["wg"];
-    #[cfg(target_os = "android")]
-    paths.push("awg");
+    let paths = ["wg", "awg"];
 
     let mut found = Vec::new();
     for path in paths {
@@ -601,13 +598,66 @@ async fn start_awg(
             }
         }
     }
-    #[cfg(not(target_os = "android"))]
+    // Windows: движок сам создаёт адаптер (wintun) и принимает настройки по именованному каналу; адрес и маршруты
+    // приложение задаёт скриптом. Нужны права администратора — как для режима TUN.
+    #[cfg(windows)]
+    {
+        if !zexor_vpn_core::elevation::is_elevated() {
+            return Err(ConnectError::NeedsElevation);
+        }
+        let binary = resolve_awg_binary_desktop(app)?;
+        ensure_wintun(app, &binary)?;
+        let work_dir = zexor_vpn_core::xray::process::app_data_dir()
+            .join("ZexorVPN")
+            .join("awg");
+        let config = node.config.clone();
+        let process = tokio::task::spawn_blocking(move || {
+            zexor_vpn_core::awg::AwgProcess::start(&binary, &work_dir, &config)
+        })
+        .await
+        .map_err(|e| ConnectError::Awg(e.to_string()))?
+        .map_err(|e| ConnectError::Awg(e.to_string()))?;
+        let mut connection = state.connection.lock().unwrap();
+        connection.process = Some(Tunnel::Awg(process));
+        connection.connected_node = Some(node.remark.clone());
+        connection.connected_source = Some(source_id.to_string());
+        connection.auto = false;
+        Ok(())
+    }
+    #[cfg(not(any(target_os = "android", windows)))]
     {
         let _ = (app, state, node, source_id);
         Err(ConnectError::Awg(
-            "AmneziaWG пока доступен только в приложении для Android".to_string(),
+            "AmneziaWG доступен в приложениях для Android и Windows".to_string(),
         ))
     }
+}
+
+/// Движок AmneziaWG для Windows: лежит среди ресурсов рядом с `wintun.dll` (его ищет сам движок в своей папке).
+#[cfg(windows)]
+fn resolve_awg_binary_desktop(app: &AppHandle) -> Result<PathBuf, ConnectError> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        candidates.push(resource_dir.join("resources").join("amneziawg-go.exe"));
+        candidates.push(resource_dir.join("amneziawg-go.exe"));
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            candidates.push(dir.join("amneziawg-go.exe"));
+        }
+    }
+    candidates
+        .iter()
+        .find(|path| path.is_file())
+        .cloned()
+        .ok_or_else(|| {
+            ConnectError::BinaryMissing(
+                candidates
+                    .first()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| "amneziawg-go.exe".to_string()),
+            )
+        })
 }
 
 /// Подпись подключения в авто-режиме.

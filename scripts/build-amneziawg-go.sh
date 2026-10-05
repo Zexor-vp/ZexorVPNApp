@@ -21,7 +21,7 @@ git fetch -q --depth 1 origin "$AWG_COMMIT"
 git checkout -q FETCH_HEAD
 echo "amneziawg-go: $(git rev-parse HEAD)"
 
-if [ -f ipc/uapi_unix.go ]; then
+if [ "$GOOS_TARGET" != "windows" ] && [ -f ipc/uapi_unix.go ]; then
 python3 - <<'PY'
 p = "ipc/uapi_unix.go"
 s = open(p).read()
@@ -40,7 +40,7 @@ fi
 # системный VPN (ошибка "failed to set MTU of TUN device: permission denied"). В апстриме для этого есть
 # CreateUnmonitoredTUNFromFD (его использует и wireguard-android): он берёт готовый дескриптор как есть,
 # а MTU задаёт сам VpnService.
-if [ -f ipc/uapi_unix.go ]; then
+if [ "$GOOS_TARGET" != "windows" ] && [ -f ipc/uapi_unix.go ]; then
 python3 - <<'PY'
 p = "main.go"
 s = open(p).read()

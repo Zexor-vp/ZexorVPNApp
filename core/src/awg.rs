@@ -296,6 +296,141 @@ pub fn split_cidr(cidr: &str) -> Option<(String, u8)> {
     Some((ip.trim().to_string(), prefix.trim().parse().ok()?))
 }
 
+// ───────────────────────────── Windows: настройка адаптера ─────────────────────────────
+//
+// На Windows движок `amneziawg-go.exe` сам создаёт адаптер (wintun), а адрес, маршруты и DNS приложение задаёт
+// скриптом PowerShell. Сами скрипты и разбор вывода — обычные функции (они проверяются тестами на любой системе),
+// а запуск процессов лежит в модуле `win_process` ниже.
+
+/// Имя адаптера AmneziaWG в Windows.
+pub const WINDOWS_ADAPTER: &str = "ZexorAWG";
+
+/// Основной маршрут по умолчанию до подъёма туннеля: через него идёт трафик к самому серверу AmneziaWG
+/// (иначе пакеты рукопожатия попали бы в собственный туннель).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DefaultRoute {
+    pub next_hop: String,
+    pub if_index: u32,
+}
+
+/// Скрипт PowerShell, который печатает `<шлюз>,<номер интерфейса>` основного маршрута по умолчанию.
+pub const DEFAULT_ROUTE_SCRIPT: &str = "$r = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction Stop | Sort-Object RouteMetric | Select-Object -First 1; if (-not $r) { exit 3 }; \"$($r.NextHop),$($r.InterfaceIndex)\"";
+
+/// Разбор вывода [`DEFAULT_ROUTE_SCRIPT`].
+pub fn parse_default_route(output: &str) -> Option<DefaultRoute> {
+    let line = output.lines().map(str::trim).find(|l| l.contains(','))?;
+    let (hop, index) = line.split_once(',')?;
+    let next_hop: std::net::Ipv4Addr = hop.trim().parse().ok()?;
+    let if_index: u32 = index.trim().parse().ok()?;
+    Some(DefaultRoute {
+        next_hop: next_hop.to_string(),
+        if_index,
+    })
+}
+
+/// Скрипт PowerShell, который настраивает адаптер `adapter` уже после запуска движка: адрес, MTU, DNS, маршрут до
+/// сервера в обход туннеля и маршруты туннеля. Все значения (адреса, DNS) проверяются как IP-адреса — в текст
+/// скрипта попадает только то, что разобралось в числа, поэтому из конфига подписки в него ничего подставить нельзя.
+/// Изменения только в активном хранилище (`ActiveStore`): после перезагрузки их нет.
+pub fn windows_setup_script(
+    adapter: &str,
+    config: &AwgConfig,
+    endpoint: std::net::Ipv4Addr,
+    default_route: &DefaultRoute,
+) -> Result<String, AwgError> {
+    use std::net::{IpAddr, Ipv4Addr};
+
+    let mut addresses = Vec::new();
+    for raw in &config.addresses {
+        let (ip, prefix) = split_cidr(&with_prefix(raw))
+            .ok_or_else(|| AwgError::Config(format!("неверный адрес интерфейса: {raw}")))?;
+        if let Ok(ip) = ip.parse::<Ipv4Addr>() {
+            if prefix <= 32 {
+                addresses.push((ip, prefix));
+            }
+        }
+    }
+    if addresses.is_empty() {
+        return Err(AwgError::Config(
+            "в конфиге нет IPv4-адреса интерфейса".to_string(),
+        ));
+    }
+
+    let mut dns = Vec::new();
+    for raw in &config.dns {
+        let ip: IpAddr = raw
+            .trim()
+            .parse()
+            .map_err(|_| AwgError::Config(format!("неверный адрес DNS: {raw}")))?;
+        dns.push(ip.to_string());
+    }
+
+    // Маршруты туннеля из AllowedIPs: «всё» (0.0.0.0/0) делим на две половины — они точнее маршрута по умолчанию, и
+    // он остаётся запасным, если туннель вдруг пропадёт.
+    let mut routes: Vec<String> = Vec::new();
+    for raw in &config.peer.allowed_ips {
+        let Some((ip, prefix)) = split_cidr(&with_prefix(raw)) else {
+            continue;
+        };
+        let Ok(ip) = ip.parse::<Ipv4Addr>() else {
+            continue; // IPv6 пока не маршрутизируем
+        };
+        if prefix > 32 {
+            continue;
+        }
+        if prefix == 0 {
+            routes.push("0.0.0.0/1".to_string());
+            routes.push("128.0.0.0/1".to_string());
+        } else {
+            routes.push(format!("{ip}/{prefix}"));
+        }
+    }
+    if routes.is_empty() {
+        return Err(AwgError::Config(
+            "в конфиге нет IPv4-маршрутов (AllowedIPs)".to_string(),
+        ));
+    }
+
+    let mut script = String::new();
+    script.push_str("$ErrorActionPreference = 'Stop'\n");
+    script.push_str(&format!("$alias = '{adapter}'\n"));
+    script.push_str(
+        "for ($i = 0; $i -lt 60; $i++) { $a = Get-NetAdapter -Name $alias -ErrorAction SilentlyContinue; if ($a) { break }; Start-Sleep -Milliseconds 250 }\n",
+    );
+    script.push_str("if (-not $a) { throw 'адаптер AmneziaWG не появился' }\n");
+    script.push_str("$idx = $a.ifIndex\n");
+    for (ip, prefix) in &addresses {
+        script.push_str(&format!(
+            "New-NetIPAddress -InterfaceIndex $idx -IPAddress '{ip}' -PrefixLength {prefix} -PolicyStore ActiveStore | Out-Null\n"
+        ));
+    }
+    script.push_str(&format!(
+        "Set-NetIPInterface -InterfaceIndex $idx -AddressFamily IPv4 -NlMtuBytes {} -InterfaceMetric 1 -ErrorAction SilentlyContinue\n",
+        config.tunnel_mtu()
+    ));
+    if !dns.is_empty() {
+        let list = dns
+            .iter()
+            .map(|d| format!("'{d}'"))
+            .collect::<Vec<_>>()
+            .join(",");
+        script.push_str(&format!(
+            "Set-DnsClientServerAddress -InterfaceIndex $idx -ServerAddresses {list}\n"
+        ));
+    }
+    // Сначала маршрут до самого сервера через прежний шлюз — только потом маршруты туннеля.
+    script.push_str(&format!(
+        "New-NetRoute -DestinationPrefix '{endpoint}/32' -InterfaceIndex {} -NextHop '{}' -RouteMetric 1 -PolicyStore ActiveStore | Out-Null\n",
+        default_route.if_index, default_route.next_hop
+    ));
+    for route in &routes {
+        script.push_str(&format!(
+            "New-NetRoute -DestinationPrefix '{route}' -InterfaceIndex $idx -NextHop '0.0.0.0' -RouteMetric 1 -PolicyStore ActiveStore | Out-Null\n"
+        ));
+    }
+    Ok(script)
+}
+
 #[cfg(unix)]
 pub use process::AwgProcess;
 
@@ -480,6 +615,249 @@ mod process {
     }
 }
 
+#[cfg(windows)]
+pub use win_process::AwgProcess;
+
+#[cfg(windows)]
+mod win_process {
+    use std::io::{Read, Write};
+    use std::os::windows::process::CommandExt;
+    use std::path::Path;
+    use std::process::{Child, Command, Stdio};
+    use std::sync::mpsc;
+    use std::time::{Duration, Instant};
+
+    use super::{
+        parse_default_route, windows_setup_script, AwgConfig, AwgError, DefaultRoute,
+        DEFAULT_ROUTE_SCRIPT, WINDOWS_ADAPTER,
+    };
+    use crate::xray::process::job::JobObject;
+
+    /// Не показывать окно консоли у дочерних процессов.
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+    /// Именованный канал управления движка (UAPI): его создаёт сам `amneziawg-go.exe`.
+    fn pipe_path() -> String {
+        format!(r"\\.\pipe\ProtectedPrefix\Administrators\AmneziaWG\{WINDOWS_ADAPTER}")
+    }
+
+    /// Запущенный `amneziawg-go.exe`. Пока жив — туннель работает; `Drop` его гасит и убирает маршрут до сервера.
+    pub struct AwgProcess {
+        child: Child,
+        _job: Option<JobObject>,
+        endpoint: std::net::Ipv4Addr,
+    }
+
+    fn powershell(script: &str) -> Result<String, String> {
+        let output = Command::new("powershell.exe")
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                script,
+            ])
+            .creation_flags(CREATE_NO_WINDOW)
+            .stdin(Stdio::null())
+            .output()
+            .map_err(|e| format!("не удалось запустить PowerShell: {e}"))?;
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        if output.status.success() {
+            Ok(stdout)
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let text = if stderr.trim().is_empty() {
+                stdout
+            } else {
+                stderr.to_string()
+            };
+            Err(text.lines().take(3).collect::<Vec<_>>().join(" "))
+        }
+    }
+
+    fn default_route() -> Result<DefaultRoute, AwgError> {
+        let out = powershell(DEFAULT_ROUTE_SCRIPT).map_err(AwgError::Spawn)?;
+        parse_default_route(&out).ok_or_else(|| {
+            AwgError::Spawn("не удалось определить основной маршрут сети".to_string())
+        })
+    }
+
+    impl AwgProcess {
+        /// Запускает движок, применяет конфиг и настраивает адаптер. Нужны права администратора (адаптер wintun),
+        /// `wintun.dll` лежит рядом с `binary`.
+        pub fn start(binary: &Path, work_dir: &Path, config: &AwgConfig) -> Result<Self, AwgError> {
+            if !binary.is_file() {
+                return Err(AwgError::Spawn(format!("нет файла {}", binary.display())));
+            }
+            let resolved = config.resolve_endpoint()?;
+            let endpoint =
+                match resolved.ip() {
+                    std::net::IpAddr::V4(ip) => ip,
+                    std::net::IpAddr::V6(_) => return Err(AwgError::Config(
+                        "сервер AmneziaWG с адресом IPv6 в Windows-версии пока не поддерживается"
+                            .to_string(),
+                    )),
+                };
+            let uapi = config.to_uapi(resolved)?;
+            let route = default_route()?;
+            let setup = windows_setup_script(WINDOWS_ADAPTER, config, endpoint, &route)?;
+
+            std::fs::create_dir_all(work_dir).map_err(|e| AwgError::Spawn(e.to_string()))?;
+            let log_path = work_dir.join("awg.log");
+            let (log_out, log_err) = match std::fs::File::create(&log_path) {
+                Ok(file) => match file.try_clone() {
+                    Ok(clone) => (Stdio::from(file), Stdio::from(clone)),
+                    Err(_) => (Stdio::from(file), Stdio::null()),
+                },
+                Err(_) => (Stdio::null(), Stdio::null()),
+            };
+
+            let mut command = Command::new(binary);
+            command
+                .arg(WINDOWS_ADAPTER)
+                .stdin(Stdio::null())
+                .stdout(log_out)
+                .stderr(log_err)
+                .creation_flags(CREATE_NO_WINDOW);
+            // Рядом с exe лежит wintun.dll — движок ищет её в своей папке.
+            if let Some(dir) = binary.parent() {
+                command.current_dir(dir);
+            }
+            let child = command
+                .spawn()
+                .map_err(|e| AwgError::Spawn(e.to_string()))?;
+            let job = JobObject::new().ok();
+            if let Some(job) = &job {
+                let _ = job.assign(&child);
+            }
+            let mut process = Self {
+                child,
+                _job: job,
+                endpoint,
+            };
+
+            if let Err(error) = process.configure(&uapi, &setup, &log_path) {
+                process.stop();
+                return Err(error);
+            }
+            Ok(process)
+        }
+
+        fn configure(&mut self, uapi: &str, setup: &str, log_path: &Path) -> Result<(), AwgError> {
+            // 1. Ждём, пока движок создаст адаптер и канал управления (первый запуск ставит драйвер — до нескольких секунд).
+            let deadline = Instant::now() + Duration::from_secs(20);
+            let pipe = loop {
+                if let Ok(Some(status)) = self.child.try_wait() {
+                    return Err(AwgError::ExitedImmediately(format!(
+                        " (код {:?}){}",
+                        status.code(),
+                        log_tail(log_path)
+                    )));
+                }
+                match std::fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(pipe_path())
+                {
+                    Ok(file) => break file,
+                    Err(_) if Instant::now() < deadline => {
+                        std::thread::sleep(Duration::from_millis(250))
+                    }
+                    Err(e) => {
+                        return Err(AwgError::Uapi(format!(
+                            "нет канала управления движка: {e}{}",
+                            log_tail(log_path)
+                        )))
+                    }
+                }
+            };
+
+            // 2. Отправляем настройки. Чтение из канала блокирующее — держим его в отдельном потоке с ограничением времени.
+            let (sender, receiver) = mpsc::channel();
+            let payload = uapi.to_string();
+            std::thread::spawn(move || {
+                let mut pipe = pipe;
+                let result = (|| -> Result<String, String> {
+                    pipe.write_all(payload.as_bytes())
+                        .map_err(|e| e.to_string())?;
+                    let mut reply = String::new();
+                    let mut buffer = [0u8; 256];
+                    while !reply.contains("\n\n") {
+                        match pipe.read(&mut buffer) {
+                            Ok(0) => break,
+                            Ok(n) => reply.push_str(&String::from_utf8_lossy(&buffer[..n])),
+                            Err(e) => return Err(e.to_string()),
+                        }
+                    }
+                    Ok(reply)
+                })();
+                let _ = sender.send(result);
+            });
+            let reply = receiver
+                .recv_timeout(Duration::from_secs(10))
+                .map_err(|_| AwgError::Uapi(format!("нет ответа движка{}", log_tail(log_path))))?
+                .map_err(|e| AwgError::Uapi(format!("нет ответа движка: {e}")))?;
+            if !reply.contains("errno=0") {
+                return Err(AwgError::Uapi(format!(
+                    "движок отклонил настройки ({}){}",
+                    reply.trim(),
+                    log_tail(log_path)
+                )));
+            }
+
+            // 3. Адрес, DNS и маршруты адаптера.
+            powershell(setup).map_err(|e| AwgError::Uapi(format!("настройка сети: {e}")))?;
+            Ok(())
+        }
+
+        pub fn is_running(&mut self) -> bool {
+            matches!(self.child.try_wait(), Ok(None))
+        }
+
+        pub fn stop(&mut self) {
+            let _ = self.child.kill();
+            let _ = self.child.wait();
+            // Маршруты адаптера исчезают вместе с ним; свой маршрут до сервера убираем сами.
+            let _ = Command::new("route")
+                .args([
+                    "delete",
+                    &self.endpoint.to_string(),
+                    "mask",
+                    "255.255.255.255",
+                ])
+                .creation_flags(CREATE_NO_WINDOW)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+        }
+    }
+
+    impl Drop for AwgProcess {
+        fn drop(&mut self) {
+            self.stop();
+        }
+    }
+
+    /// Последние строки журнала движка — в сообщение об ошибке.
+    fn log_tail(path: &Path) -> String {
+        let Ok(text) = std::fs::read_to_string(path) else {
+            return String::new();
+        };
+        let lines: Vec<&str> = text
+            .lines()
+            .filter(|l| !l.trim().is_empty() && !l.starts_with("Warning: this is a test program"))
+            .collect();
+        let tail = lines[lines.len().saturating_sub(3)..].join(" | ");
+        if tail.is_empty() {
+            String::new()
+        } else {
+            format!("\n{tail}")
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -637,5 +1015,84 @@ mod tests {
             "сервер не ответил через туннель: {}",
             String::from_utf8_lossy(&ping.stdout)
         );
+    }
+
+    fn sample_config() -> AwgConfig {
+        AwgConfig::parse(
+            "[Interface]\nPrivateKey = kMAgcvFXOGzOKOyUDMT6y8o6Jn0kWqVYM7bWT6fTkU4=\nAddress = 10.29.64.2/32\nDNS = 1.1.1.1, 8.8.8.8\nMTU = 1280\nJc = 4\n\n[Peer]\nPublicKey = wN0povGFu0PwWPgPvEjI9UJuZyPauxylzb6x4sAyalc=\nEndpoint = 13.143.183.141:51825\nAllowedIPs = 0.0.0.0/0, ::/0\nPersistentKeepalive = 25\n",
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn default_route_output_is_parsed() {
+        let route = parse_default_route("\r\n192.168.1.1,12\r\n").unwrap();
+        assert_eq!(route.next_hop, "192.168.1.1");
+        assert_eq!(route.if_index, 12);
+        assert!(parse_default_route("").is_none());
+        assert!(parse_default_route("не маршрут,x").is_none());
+        // Маршрут «на канале» (без шлюза) — тоже валидный.
+        assert_eq!(
+            parse_default_route("0.0.0.0,7").unwrap().next_hop,
+            "0.0.0.0"
+        );
+    }
+
+    #[test]
+    fn windows_script_sets_address_dns_bypass_and_split_routes() {
+        let route = DefaultRoute {
+            next_hop: "192.168.1.1".to_string(),
+            if_index: 12,
+        };
+        let script = windows_setup_script(
+            WINDOWS_ADAPTER,
+            &sample_config(),
+            "13.143.183.141".parse().unwrap(),
+            &route,
+        )
+        .unwrap();
+        assert!(script.contains("-IPAddress '10.29.64.2' -PrefixLength 32"));
+        assert!(script.contains("-NlMtuBytes 1280"));
+        assert!(script.contains("-ServerAddresses '1.1.1.1','8.8.8.8'"));
+        // Маршрут до сервера идёт раньше маршрутов туннеля.
+        let bypass = script
+            .find("'13.143.183.141/32' -InterfaceIndex 12 -NextHop '192.168.1.1'")
+            .unwrap();
+        let first_split = script.find("'0.0.0.0/1'").unwrap();
+        assert!(bypass < first_split);
+        assert!(script.contains("'128.0.0.0/1'"));
+        // IPv6 пока не маршрутизируется, активное хранилище — чтобы после перезагрузки ничего не осталось.
+        assert!(!script.contains("::/"));
+        assert_eq!(
+            script.matches("-PolicyStore ActiveStore").count(),
+            1 + 1 + 2
+        );
+    }
+
+    #[test]
+    fn windows_script_rejects_values_that_are_not_ip_addresses() {
+        let route = DefaultRoute {
+            next_hop: "192.168.1.1".to_string(),
+            if_index: 12,
+        };
+        let mut config = sample_config();
+        config.dns = vec!["1.1.1.1'; calc; '".to_string()];
+        assert!(windows_setup_script(
+            WINDOWS_ADAPTER,
+            &config,
+            "13.143.183.141".parse().unwrap(),
+            &route
+        )
+        .is_err());
+
+        let mut config = sample_config();
+        config.addresses = vec!["fd00::2/128".to_string()];
+        assert!(windows_setup_script(
+            WINDOWS_ADAPTER,
+            &config,
+            "13.143.183.141".parse().unwrap(),
+            &route
+        )
+        .is_err());
     }
 }

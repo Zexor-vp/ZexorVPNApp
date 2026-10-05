@@ -12,10 +12,10 @@ use zexor_vpn_core::adblock::settings::AdblockConfig;
 use zexor_vpn_core::settings::AppSettings;
 use zexor_vpn_core::{ApiClient, TokenSet, XrayProcess};
 
-/// Запущенный туннель: xray или (на Android) AmneziaWG. Живёт, пока жив процесс движка.
+/// Запущенный туннель: xray или AmneziaWG (Android и Windows). Живёт, пока жив процесс движка.
 pub enum Tunnel {
     Xray(XrayProcess),
-    #[cfg(unix)]
+    #[cfg(any(unix, windows))]
     Awg(zexor_vpn_core::awg::AwgProcess),
 }
 
@@ -23,7 +23,7 @@ impl Tunnel {
     pub fn is_running(&mut self) -> bool {
         match self {
             Tunnel::Xray(process) => process.is_running(),
-            #[cfg(unix)]
+            #[cfg(any(unix, windows))]
             Tunnel::Awg(process) => process.is_running(),
         }
     }
@@ -31,7 +31,7 @@ impl Tunnel {
     pub fn stop(&mut self) {
         match self {
             Tunnel::Xray(process) => process.stop(),
-            #[cfg(unix)]
+            #[cfg(any(unix, windows))]
             Tunnel::Awg(process) => process.stop(),
         }
     }

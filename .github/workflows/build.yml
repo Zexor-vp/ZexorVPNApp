@@ -117,6 +117,18 @@ jobs:
           Expand-Archive -Path wintun.zip -DestinationPath wintun-tmp -Force
           Copy-Item wintun-tmp/wintun/bin/amd64/wintun.dll src-tauri/resources/
 
+      # AmneziaWG: движок собираем из исходников (MIT) на закреплённом коммите и кладём в ресурсы рядом с wintun.dll —
+      # приложение запускает его дочерним процессом (как xray). Текст лицензии поставляется вместе с ним.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Сборка движка AmneziaWG (Windows)
+        shell: bash
+        run: |
+          LICENSE_OUT="src-tauri/resources/licenses/amneziawg-go-LICENSE.txt" \
+            scripts/build-amneziawg-go.sh windows amd64 src-tauri/resources/amneziawg-go.exe
+
       - name: Сборка приложения и инсталлятора
         uses: tauri-apps/tauri-action@v0
         env:

@@ -442,10 +442,10 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
   const sub = subscription.data?.subscription ?? null;
   const hasSubscription = subscription.data?.has_subscription ?? false;
   // Протокол выбирается здесь, на устройстве, и не влияет на обычную ссылку подписки (Happ и др.). В меню — те
-  // протоколы, серверы которых есть в подписке. AmneziaWG пока умеет только Android-версия.
+  // протоколы, серверы которых есть в подписке (AmneziaWG — на Android и в Windows).
   const availableProtocols: ('wireguard' | 'awg')[] = [
     ...(allProtocols.includes('wireguard') ? (['wireguard'] as const) : []),
-    ...(isMobile && allProtocols.includes('awg') ? (['awg'] as const) : []),
+    ...(allProtocols.includes('awg') ? (['awg'] as const) : []),
   ];
   const canSwitchProtocol = isAccount && availableProtocols.length > 0;
   const chosenProtocol = (settings?.protocol ?? 'vless') as 'vless' | 'wireguard' | 'awg';
