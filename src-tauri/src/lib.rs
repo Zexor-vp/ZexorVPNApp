@@ -177,6 +177,13 @@ pub fn run() {
                 });
                 xray::android::spawn_quick_actions(app.handle().clone());
             }
+            // Прошлый запуск мог завершиться, не вернув системный прокси (убит процесс, выключили компьютер) —
+            // тогда интернет не работает, пока прокси смотрит на наш закрытый порт. Чиним на старте.
+            #[cfg(windows)]
+            {
+                zexor_vpn_core::proxy::restore_after_crash();
+                zexor_vpn_core::proxy::install_session_end_guard();
+            }
             app.manage(state::AppState::default());
 
             // Жёсткая гарантия: при любом выходе снимаем системный прокси и

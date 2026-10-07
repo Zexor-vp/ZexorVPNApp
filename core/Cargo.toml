@@ -29,6 +29,9 @@ windows = { version = "0.58", features = [
     "Win32_System_JobObjects",
     "Win32_System_Threading",
     "Win32_Networking_WinInet",
+    # Скрытое окно, которое слушает завершение сеанса Windows (выключение, выход из системы).
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }

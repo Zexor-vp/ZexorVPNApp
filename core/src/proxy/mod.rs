@@ -114,8 +114,32 @@ pub fn restore() -> Result<(), ProxyError> {
     }
 }
 
+/// Порты нашего HTTP-прокси: если системный прокси остался на одном из них, а на нём никто не слушает, это наш
+/// «осиротевший» прокси (приложение завершили без отката), и он отрезает интернет.
+const OWN_HTTP_PORTS: &[u16] = &[10809];
+
+/// «Осиротевший» ли системный прокси: указывает на локальный порт из [`OWN_HTTP_PORTS`], а на нём никто не слушает.
+/// Чужие локальные прокси (на других портах или реально работающие) не трогаем.
+pub fn is_orphaned_local_proxy(server: &str, port_is_listening: impl Fn(u16) -> bool) -> bool {
+    let server = server
+        .trim()
+        .trim_start_matches("http=")
+        .trim_start_matches("https=");
+    let Some((host, port)) = server.rsplit_once(':') else {
+        return false;
+    };
+    if host != "127.0.0.1" && !host.eq_ignore_ascii_case("localhost") {
+        return false;
+    }
+    let Ok(port) = port.trim().parse::<u16>() else {
+        return false;
+    };
+    OWN_HTTP_PORTS.contains(&port) && !port_is_listening(port)
+}
+
 /// Вызывается на старте приложения: если остался снапшот, значит прошлый запуск
-/// завершился аварийно, не откатив прокси — чиним.
+/// завершился аварийно, не откатив прокси — чиним. Если снапшота нет (потерян), а системный прокси всё ещё
+/// смотрит на наш порт, на котором никто не слушает, — просто отключаем его.
 pub fn restore_after_crash() -> bool {
     if load_snapshot().is_some() {
         let restored = restore().is_ok();
@@ -124,7 +148,39 @@ pub fn restore_after_crash() -> bool {
         }
         return restored;
     }
+    #[cfg(windows)]
+    {
+        if let Ok(current) = windows_proxy::read_current() {
+            if current.proxy_enable == 1 {
+                if let Some(server) = &current.proxy_server {
+                    let listening = |port: u16| {
+                        std::net::TcpStream::connect_timeout(
+                            &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+                            std::time::Duration::from_millis(300),
+                        )
+                        .is_ok()
+                    };
+                    if is_orphaned_local_proxy(server, listening) {
+                        let fixed = windows_proxy::disable().is_ok();
+                        if fixed {
+                            tracing::warn!(
+                                "системный прокси указывал на наш закрытый порт: отключён"
+                            );
+                        }
+                        return fixed;
+                    }
+                }
+            }
+        }
+    }
     false
+}
+
+/// Следит за завершением сеанса Windows (выключение, выход из системы) и возвращает системный прокси до того, как
+/// процесс убьют. На других системах ничего не делает.
+pub fn install_session_end_guard() {
+    #[cfg(windows)]
+    windows_proxy::install_session_end_guard();
 }
 
 #[cfg(test)]
@@ -135,6 +191,20 @@ mod tests {
         std::env::temp_dir()
             .join(format!("zexor-proxy-{}-{tag}", std::process::id()))
             .join("proxy-backup.json")
+    }
+
+    #[test]
+    fn orphaned_local_proxy_is_detected_only_for_our_dead_port() {
+        // Наш порт, никто не слушает — осиротевший.
+        assert!(is_orphaned_local_proxy("127.0.0.1:10809", |_| false));
+        // Кто-то слушает (например, другой клиент на том же порту) — не трогаем.
+        assert!(!is_orphaned_local_proxy("127.0.0.1:10809", |_| true));
+        // Чужой порт или чужой хост — не трогаем.
+        assert!(!is_orphaned_local_proxy("127.0.0.1:8080", |_| false));
+        assert!(!is_orphaned_local_proxy("corp-proxy.local:3128", |_| false));
+        // Формат «по протоколам» тоже понимаем.
+        assert!(is_orphaned_local_proxy("http=127.0.0.1:10809", |_| false));
+        assert!(!is_orphaned_local_proxy("", |_| false));
     }
 
     #[test]

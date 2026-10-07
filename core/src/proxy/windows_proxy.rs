@@ -95,3 +95,94 @@ fn notify_settings_changed() {
         let _ = InternetSetOptionW(None, INTERNET_OPTION_REFRESH, None, 0);
     }
 }
+
+/// Отключает системный прокси, не трогая остальные значения (если снапшота нет, а прокси остался нашим).
+pub fn disable() -> Result<(), ProxyError> {
+    let key = open(KEY_READ | KEY_WRITE)?;
+    key.set_value("ProxyEnable", &0u32)
+        .map_err(|e| ProxyError::Write(e.to_string()))?;
+    let _ = key.delete_value("ProxyServer");
+    notify_settings_changed();
+    Ok(())
+}
+
+/// Скрытое окно верхнего уровня, которое получает `WM_ENDSESSION`: при выключении компьютера или выходе из системы
+/// Windows убивает процессы без предупреждения, и без этого системный прокси остался бы указывать на мёртвый порт —
+/// после следующего включения интернета не было бы, пока приложение не запустят снова.
+pub fn install_session_end_guard() {
+    use std::sync::Once;
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        let _ = std::thread::Builder::new()
+            .name("zexor-session-end".to_string())
+            .spawn(run_session_end_window);
+    });
+}
+
+fn run_session_end_window() {
+    use windows::core::w;
+    use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+    use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, RegisterClassW,
+        TranslateMessage, MSG, WINDOW_EX_STYLE, WM_ENDSESSION, WM_QUERYENDSESSION, WNDCLASSW,
+        WS_OVERLAPPED,
+    };
+
+    unsafe extern "system" fn window_proc(
+        hwnd: HWND,
+        message: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+    ) -> LRESULT {
+        match message {
+            // Нас не держим: сеанс завершать можно.
+            WM_QUERYENDSESSION => LRESULT(1),
+            WM_ENDSESSION => {
+                // wparam != 0 — сеанс действительно завершается: возвращаем прокси, пока процесс ещё жив.
+                if wparam.0 != 0 {
+                    let _ = super::restore();
+                }
+                LRESULT(0)
+            }
+            _ => DefWindowProcW(hwnd, message, wparam, lparam),
+        }
+    }
+
+    unsafe {
+        let Ok(instance) = GetModuleHandleW(None) else {
+            return;
+        };
+        let class = WNDCLASSW {
+            lpfnWndProc: Some(window_proc),
+            hInstance: instance.into(),
+            lpszClassName: w!("ZexorVpnSessionGuard"),
+            ..Default::default()
+        };
+        if RegisterClassW(&class) == 0 {
+            return;
+        }
+        let Ok(_window) = CreateWindowExW(
+            WINDOW_EX_STYLE(0),
+            w!("ZexorVpnSessionGuard"),
+            w!("Zexor VPN session guard"),
+            WS_OVERLAPPED,
+            0,
+            0,
+            0,
+            0,
+            None,
+            None,
+            instance,
+            None,
+        ) else {
+            return;
+        };
+        // Окно не показываем (ShowWindow не вызываем): оно нужно только ради сообщений.
+        let mut message = MSG::default();
+        while GetMessageW(&mut message, None, 0, 0).as_bool() {
+            let _ = TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+}
