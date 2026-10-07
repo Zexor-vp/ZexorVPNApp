@@ -1,0 +1,157 @@
+[1m[92m    Updating[0m crates.io index
+[1m[92m   Compiling[0m zexor-vpn-core v0.3.40 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/core)
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 3.94s
+[1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/zexor_vpn_core-0040609b75aaf206)
+
+running 142 tests
+test adblock::counter::tests::counts_only_block_lines ... ok
+test adblock::settings::tests::custom_lists_reject_duplicates_and_garbage_and_support_removal ... ok
+test adblock::counter::tests::reset_forgets_what_is_already_in_the_log ... ok
+test adblock::settings::tests::effective_list_merges_sources_and_respects_toggles ... ok
+test adblock::settings::tests::refresh_is_due_when_never_fetched_or_stale_and_not_when_remote_is_off ... ok
+test adblock::settings::tests::user_input_is_normalized_to_a_bare_domain ... ok
+test adblock::tests::deduplicates_and_sorts ... ok
+test adblock::tests::handles_empty_input ... ok
+test adblock::tests::never_blocks_localhost_entries ... ok
+test adblock::tests::normalizes_case ... ok
+test adblock::tests::normalizes_leading_dots_instead_of_rejecting ... ok
+test adblock::tests::parses_adblock_plus_syntax ... ok
+test adblock::tests::parses_hosts_format ... ok
+test adblock::tests::parses_plain_domain_list ... ok
+test adblock::tests::rejects_garbage_entries ... ok
+test adblock::tests::skips_exception_and_cosmetic_rules ... ok
+test adblock::tests::strips_inline_comments_and_wildcards ... ok
+test adblock::settings::tests::custom_domain_count_is_capped ... ok
+test api::tests::deeplink_poll_200_returns_tokens_for_telegram_only_user ... ok
+test api::tests::deeplink_poll_202_is_pending ... ok
+test api::tests::deeplink_poll_410_is_expired ... ok
+test api::tests::deeplink_request_returns_token_and_bot ... ok
+test api::tests::html_error_pages_are_replaced_by_a_readable_message ... ok
+test api::tests::login_maps_401_to_invalid_credentials ... ok
+test api::tests::every_request_identifies_the_desktop_client ... ok
+test api::tests::login_maps_429_to_rate_limited ... ok
+test api::tests::login_returns_tokens_on_success ... ok
+test api::tests::malformed_json_body_is_a_decode_error ... ok
+test api::tests::pair_status_maps_all_three_states ... ok
+test api::tests::raw_request_maps_errors_and_nested_detail_message ... ok
+test api::tests::raw_request_rejects_foreign_or_traversal_paths ... ok
+test api::tests::raw_request_sends_bearer_and_returns_json ... ok
+test api::tests::refresh_returns_new_rotated_pair ... ok
+test api::tests::refresh_with_dead_token_is_unauthorized ... ok
+test api::tests::server_error_carries_detail_message ... ok
+test api::tests::subscription_info_handles_no_subscription ... ok
+test api::tests::subscription_info_parses_full_payload ... ok
+test apps::tests::tasklist_output_is_reduced_to_unique_user_apps ... ok
+test auth::tests::expired_refresh_wins_over_still_valid_access ... ok
+test api::tests::subscription_info_rejects_expired_access_token ... ok
+test auth::tests::reads_expiry_from_jwt ... ok
+test auth::tests::refreshes_expired_access_token ... ok
+test auth::tests::refreshes_within_safety_margin_before_expiry ... ok
+test auth::tests::rejects_malformed_jwt ... ok
+test auth::tests::requires_login_when_refresh_token_expired ... ok
+test auth::tests::unreadable_access_triggers_refresh_not_login ... ok
+test auth::tests::unreadable_refresh_forces_login_rather_than_retry_loop ... ok
+test auth::tests::uses_current_token_while_it_is_comfortably_valid ... ok
+test awg::tests::address_without_mask_gets_one ... ok
+test awg::tests::awg_uri_roundtrip ... ok
+test awg::tests::cidr_split ... ok
+test awg::tests::default_route_output_is_parsed ... ok
+test awg::tests::broken_configs_are_rejected_with_a_reason ... ok
+test awg::tests::only_the_first_peer_is_used ... ok
+test awg::tests::parses_interface_peer_and_obfuscation ... ok
+test awg::tests::real_tunnel_handshake ... ignored
+test awg::tests::uapi_text_has_hex_keys_and_obfuscation_in_order ... ok
+test awg::tests::windows_script_rejects_values_that_are_not_ip_addresses ... ok
+test awg::tests::windows_script_sets_address_dns_bypass_and_split_routes ... ok
+test hwid::tests::headers_identify_a_happ_style_client_and_the_device ... ok
+test hwid::tests::id_is_stable_across_calls_and_looks_like_a_uuid_v4 ... ok
+test links::tests::allows_only_whitelisted_https_hosts ... ok
+test links::tests::payment_urls_must_be_plain_https ... ok
+test probe::live::real_delay_live ... ignored, нужен xray и живой узел
+test probe::tests::best_of_picks_the_fastest_successful_node ... ok
+test probe::tests::real_delay_reports_missing_binary_as_start_error ... ok
+test probe::tests::tcp_ping_many_keeps_input_order ... ok
+test probe::tests::tcp_ping_reaches_a_local_listener_and_misses_a_closed_port ... ok
+test probe::tests::wireguard_is_pinged_on_tcp_443 ... ok
+test proxy::tests::corrupted_snapshot_is_treated_as_absent ... ok
+test proxy::tests::missing_snapshot_reads_as_none_so_registry_is_left_alone ... ok
+test proxy::tests::orphaned_local_proxy_is_detected_only_for_our_dead_port ... ok
+test proxy::tests::snapshot_roundtrips_through_disk ... ok
+test settings::tests::app_names_are_reduced_to_the_file_name ... ok
+test settings::tests::duplicates_are_rejected_ignoring_case ... ok
+test settings::tests::empty_list_in_only_mode_means_everything_goes_through_vpn ... ok
+test adblock::counter::tests::polls_incrementally_and_waits_for_unfinished_lines ... ok
+test settings::tests::settings_map_to_config_options ... ok
+test sources::tests::corrupt_file_is_treated_as_empty ... ok
+test sources::tests::mirror_url_keeps_only_the_subscription_code ... ok
+test sources::tests::only_http_links_are_accepted ... ok
+test sources::tests::own_subscription_hosts_are_recognised ... ok
+test sources::tests::roundtrip_through_disk ... ok
+test xray::config_builder::tests::access_log_is_written_only_when_a_path_is_given ... ok
+test xray::config_builder::tests::adblock_rule_comes_before_catch_all ... ok
+test xray::config_builder::tests::allow_rules_come_before_block_rules ... ok
+test xray::config_builder::tests::always_declares_direct_and_block_outbounds ... ok
+test xray::config_builder::tests::builds_reality_outbound_matching_verified_shape ... ok
+test xray::config_builder::tests::builds_wireguard_outbound_like_the_panel_profile ... ok
+test xray::config_builder::tests::builds_ws_transport_settings ... ok
+test xray::config_builder::tests::exposes_socks_and_http_inbounds_on_requested_ports ... ok
+test xray::config_builder::tests::normalizes_blocklist_entries ... ok
+test xray::config_builder::tests::omits_flow_when_node_has_none ... ok
+test xray::config_builder::tests::private_bypass_is_toggleable ... ok
+test xray::config_builder::tests::skips_comment_lines_inside_rule_chunks ... ok
+test xray::config_builder::tests::splits_huge_blocklists_into_several_rules ... ok
+test xray::config_builder::tests::without_adblock_there_is_no_block_rule ... ok
+test xray::node::tests::base64_wireguard_list_is_parsed ... ok
+test xray::node::tests::mixed_list_keeps_both_and_skips_unknown_schemes ... ok
+test xray::node::tests::nothing_supported_is_an_error ... ok
+test xray::node::tests::placeholder_lists_are_recognised ... ok
+test xray::node::tests::plain_wireguard_list_is_parsed ... ok
+test xray::parser::tests::defaults_fingerprint_to_chrome_when_absent ... ok
+test xray::parser::tests::errors_on_garbage_body ... ok
+test xray::parser::tests::errors_when_no_vless_nodes_present ... ok
+test xray::parser::tests::falls_back_to_host_port_remark_without_fragment ... ok
+test xray::parser::tests::parses_base64_split_across_lines ... ok
+test xray::parser::tests::parses_base64_subscription_with_several_nodes ... ok
+test xray::parser::tests::parses_ipv6_host ... ok
+test xray::parser::tests::parses_plain_tls_node ... ok
+test xray::parser::tests::parses_plaintext_subscription ... ok
+test xray::parser::tests::parses_reality_uri_fully ... ok
+test xray::parser::tests::rejects_missing_uuid_and_port ... ok
+test xray::parser::tests::rejects_other_schemes ... ok
+test xray::parser::tests::rejects_reality_without_public_key ... ok
+test xray::parser::tests::rejects_reality_without_sni ... ok
+test xray::parser::tests::skips_unsupported_protocols_but_keeps_vless ... ok
+test hwid::tests::corrupt_file_is_replaced_with_a_fresh_id ... ok
+test xray::process::tests::production_config_path_lives_under_app_data ... ok
+test xray::process::tests::reports_missing_binary_clearly ... ok
+test settings::tests::missing_or_broken_file_gives_defaults_and_roundtrips ... ok
+test xray::profile::tests::balancer_over_several_servers_is_auto_even_without_observatory ... ok
+test xray::profile::tests::empty_or_broken_json_is_an_error ... ok
+test xray::profile::tests::endpoints_for_ping ... ok
+test xray::profile::tests::panel_server_profile_with_single_server_balancers_is_a_server_not_auto ... ok
+test xray::profile::tests::parses_servers_balanced_profile_and_youtube_names ... ok
+test xray::profile::tests::plain_link_lists_are_not_profiles ... ok
+test xray::routing::dump::dump_configs ... ignored, ручная выгрузка конфигов
+test xray::routing::tests::android_tun_uses_the_fd_from_vpnservice_and_touches_no_routes ... ok
+test xray::routing::tests::balanced_profile_keeps_its_balancers_and_allow_rules_follow_its_default_target ... ok
+test xray::routing::tests::balancer_splits_youtube_servers_and_routes_youtube_to_them ... ok
+test xray::routing::tests::balancer_without_youtube_servers_has_a_single_balancer_and_works_for_wireguard ... ok
+test xray::routing::tests::nothing_to_balance_gives_none ... ok
+test xray::routing::tests::profile_runs_as_is_but_with_local_inbounds_and_user_rules ... ok
+test xray::routing::tests::tun_mode_blocks_ipv6_first ... ok
+test xray::routing::tests::vpn_only_mode_routes_the_rest_directly_and_drops_profile_rules ... ok
+test xray::wireguard::tests::falls_back_to_host_when_remark_is_missing ... ok
+test xray::wireguard::tests::parses_happ_style_link ... ok
+test xray::wireguard::tests::rejects_other_schemes_and_missing_parts ... ok
+test adblock::settings::tests::roundtrip_and_tolerance_to_old_or_broken_files ... ok
+test xray::process::tests::detects_process_that_exits_immediately ... ok
+test xray::process::tests::writes_config_tracks_and_stops_running_process ... ok
+
+test result: ok. 139 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+[1m[92m   Doc-tests[0m zexor_vpn_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
