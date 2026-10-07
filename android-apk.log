@@ -1,0 +1,47 @@
+== файлы
+  2159364  1981-01-01 01:01   classes.dex
+  3211424  1981-01-01 01:01   lib/arm64-v8a/libawg.so
+ 39042584  1981-01-01 01:01   lib/arm64-v8a/libxray.so
+ 19166600  1981-01-01 01:01   lib/arm64-v8a/libzexor_vpn_lib.so
+ 17120329  1981-01-01 01:01   assets/geo/geoip.dat
+ 10968988  1981-01-01 01:01   assets/geo/geosite.dat
+    10624  1981-01-01 01:01   AndroidManifest.xml
+== иконка
+application-label:'Zexor VPN'
+application-icon-120:'res/BW.xml'
+application-icon-160:'res/BW.xml'
+application-icon-240:'res/BW.xml'
+application-icon-320:'res/BW.xml'
+иконка в APK: res/BW.xml
+0e46d651e5374c26f7a78efeac1344cc473a4846214fe7492497b0493334592c  -
+наш src-tauri/icons/android/mipmap-hdpi/ic_launcher.png: c74f352173cc37a30e41fc77b87c40b5ee529cc90062ace3687e67c94c6330e8  -
+наш src-tauri/icons/android/mipmap-mdpi/ic_launcher.png: 48011fb9436aa4a744d407cf3c5f0dde7f183833fae3de32c62186a72365b59e  -
+наш src-tauri/icons/android/mipmap-xhdpi/ic_launcher.png: 1b1b44fbc0ed85463e50da0743555a7bfc6df11e1b6449abe46b8bafb6ba0705  -
+наш src-tauri/icons/android/mipmap-xxhdpi/ic_launcher.png: ced1aff659dd55aa48a6186783efb97f71a69047df00a00a66e7cca852306ada  -
+наш src-tauri/icons/android/mipmap-xxxhdpi/ic_launcher.png: 066e78de3544f891d9d4abbbb388dd813da7e2d7895b441a1c9cc67c05daac0e  -
+== манифест
+package: site.zexorvpn.desktop
+uses-permission: name='android.permission.INTERNET'
+uses-permission: name='android.permission.RECEIVE_BOOT_COMPLETED'
+uses-permission: name='android.permission.WAKE_LOCK'
+uses-permission: name='android.permission.POST_NOTIFICATIONS'
+uses-permission: name='android.permission.FOREGROUND_SERVICE'
+uses-permission: name='android.permission.FOREGROUND_SERVICE_SPECIAL_USE'
+permission: site.zexorvpn.desktop.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission: name='site.zexorvpn.desktop.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
+== сервис
+    A: package="site.zexorvpn.desktop" (Raw: "site.zexorvpn.desktop")
+        A: http://schemas.android.com/apk/res/android:minSdkVersion(0x0101020c)=24
+        A: http://schemas.android.com/apk/res/android:targetSdkVersion(0x01010270)=36
+        A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.FOREGROUND_SERVICE" (Raw: "android.permission.FOREGROUND_SERVICE")
+        A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" (Raw: "android.permission.FOREGROUND_SERVICE_SPECIAL_USE")
+        A: http://schemas.android.com/apk/res/android:name(0x01010003)="site.zexorvpn.desktop.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" (Raw: "site.zexorvpn.desktop.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
+        A: http://schemas.android.com/apk/res/android:name(0x01010003)="site.zexorvpn.desktop.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" (Raw: "site.zexorvpn.desktop.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
+        A: http://schemas.android.com/apk/res/android:extractNativeLibs(0x010104ea)=true
+            A: http://schemas.android.com/apk/res/android:name(0x01010003)="site.zexorvpn.desktop.MainActivity" (Raw: "site.zexorvpn.desktop.MainActivity")
+            A: http://schemas.android.com/apk/res/android:authorities(0x01010018)="site.zexorvpn.desktop.fileprovider" (Raw: "site.zexorvpn.desktop.fileprovider")
+          E: service (line=75)
+            A: http://schemas.android.com/apk/res/android:name(0x01010003)="site.zexorvpn.vpn.ZexorVpnService" (Raw: "site.zexorvpn.vpn.ZexorVpnService")
+            A: http://schemas.android.com/apk/res/android:permission(0x01010006)="android.permission.BIND_VPN_SERVICE" (Raw: "android.permission.BIND_VPN_SERVICE")
+            A: http://schemas.android.com/apk/res/android:foregroundServiceType(0x01010599)=0x40000000
+                    A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.net.VpnService" (Raw: "android.net.VpnService")

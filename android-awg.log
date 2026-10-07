@@ -1,0 +1,5 @@
+amneziawg-go: b5928efb6ca19f0153958460c3d141f04abc5c2e
+go: downloading golang.org/x/sys v0.36.0
+go: downloading golang.org/x/net v0.44.0
+go: downloading golang.org/x/crypto v0.42.0
+-rwxr-xr-x 1 runner runner 3211424 Oct  7 08:00 /home/runner/work/ZexorVPNApp/ZexorVPNApp/tauri-plugin-zexor-vpn/android/src/main/jniLibs/arm64-v8a/libawg.so

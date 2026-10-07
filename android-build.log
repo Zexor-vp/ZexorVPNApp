@@ -1,0 +1,150 @@
+        Info Using installed NDK: /usr/local/lib/android/sdk/ndk/27.2.12479018
+        Info Looking up installed tauri packages to check mismatched versions...
+     Running beforeBuildCommand `npm run build`
+
+> zexor-vpn-desktop@0.3.40 build
+> tsc --noEmit && vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 85 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.54 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2mdist/[22m[2massets/[22m[32mlogo-BFHXz5bi.png   [39m[1m[2m 30.69 kB[22m[1m[22m
+[2mdist/[22m[2massets/[22m[35mindex-CSJoyXq8.css  [39m[1m[2m 23.22 kB[22m[1m[22m[2m │ gzip:   5.17 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex-DBA4uzQY.js   [39m[1m[33m512.69 kB[39m[22m[2m │ gzip: 181.49 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 1.23s[39m
+[1m[92m    Updating[0m crates.io index
+[1m[92m   Compiling[0m tauri v2.11.5
+[1m[92m   Compiling[0m wry v0.55.1
+[1m[92m   Compiling[0m tauri-plugin-zexor-vpn v0.1.0 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/tauri-plugin-zexor-vpn)
+[1m[92m   Compiling[0m zexor-vpn-desktop v0.3.40 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri)
+[1m[92m   Compiling[0m tauri-plugin-fs v2.5.2
+[1m[92m   Compiling[0m tauri-plugin-dialog v2.7.3
+[1m[92m   Compiling[0m tauri-plugin-process v2.3.1
+[1m[92m   Compiling[0m tauri-plugin-notification v2.4.0
+[1m[92m   Compiling[0m tauri-plugin-opener v2.5.5
+[1m[92m   Compiling[0m zexor-vpn-core v0.3.40 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/core)
+[1m[92m   Compiling[0m tauri-runtime-wry v2.11.4
+[1m[33mwarning[0m[1m: unused imports: `CREDENTIAL_SERVICE` and `CREDENTIAL_USER`[0m
+  [1m[94m--> [0msrc-tauri/src/auth/mod.rs:14:30
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m use crate::state::{AppState, CREDENTIAL_SERVICE, CREDENTIAL_USER};
+   [1m[94m|[0m                              [1m[33m^^^^^^^^^^^^^^^^^^[0m  [1m[33m^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused import: `AppHandle`[0m
+  [1m[94m--> [0msrc-tauri/src/lib.rs:19:13
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m use tauri::{AppHandle, Manager as _};
+   [1m[94m|[0m             [1m[33m^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused import: `Manager`[0m
+  [1m[94m--> [0msrc-tauri/src/xray/mod.rs:11:24
+   [1m[94m|[0m
+[1m[94m11[0m [1m[94m|[0m use tauri::{AppHandle, Manager};
+   [1m[94m|[0m                        [1m[33m^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused variable: `xray_binary`[0m
+   [1m[94m--> [0msrc-tauri/src/xray/mod.rs:409:5
+    [1m[94m|[0m
+[1m[94m409[0m [1m[94m|[0m     xray_binary: &std::path::Path,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_xray_binary`[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m: `zexor-vpn-desktop` (lib) generated 4 warnings (run `cargo fix --lib -p zexor-vpn-desktop` to apply 3 suggestions)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 47.83s
+        Info symlinking lib "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" in jniLibs dir "/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libandroid.so"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libdl.so"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "liblog.so"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libm.so"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libc.so"
+        Info symlink at "/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/libzexor_vpn_lib.so" points to "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so"
+Downloading https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+.............10%.............20%.............30%.............40%.............50%.............60%.............70%.............80%.............90%..............100%
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/buildSrc/src/main/java/site/zexorvpn/desktop/kotlin/BuildTask.kt:53:17 'exec(Action<in ExecSpec!>): ExecResult' is deprecated. Deprecated in Java
+
+> zexor-vpn-desktop@0.3.40 tauri
+> tauri android android-studio-script --release --target aarch64
+
+        Info connection; remote_addr=127.0.0.1:33066 conn_id=0
+[1m[32m        Info[0m Using installed NDK: /usr/local/lib/android/sdk/ndk/27.2.12479018
+[1m[92m   Compiling[0m tauri v2.11.5
+[1m[92m   Compiling[0m wry v0.55.1
+[1m[92m   Compiling[0m tauri-plugin-fs v2.5.2
+[1m[92m   Compiling[0m tauri-plugin-process v2.3.1
+[1m[92m   Compiling[0m tauri-plugin-notification v2.4.0
+[1m[92m   Compiling[0m tauri-plugin-opener v2.5.5
+[1m[92m   Compiling[0m tauri-plugin-zexor-vpn v0.1.0 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/tauri-plugin-zexor-vpn)
+[1m[92m   Compiling[0m tauri-plugin-dialog v2.7.3
+[1m[92m   Compiling[0m zexor-vpn-desktop v0.3.40 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri)
+[1m[92m   Compiling[0m tauri-runtime-wry v2.11.4
+[1m[33mwarning[0m[1m: unused imports: `CREDENTIAL_SERVICE` and `CREDENTIAL_USER`[0m
+  [1m[94m--> [0msrc-tauri/src/auth/mod.rs:14:30
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m use crate::state::{AppState, CREDENTIAL_SERVICE, CREDENTIAL_USER};
+   [1m[94m|[0m                              [1m[33m^^^^^^^^^^^^^^^^^^[0m  [1m[33m^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused import: `AppHandle`[0m
+  [1m[94m--> [0msrc-tauri/src/lib.rs:19:13
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m use tauri::{AppHandle, Manager as _};
+   [1m[94m|[0m             [1m[33m^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused import: `Manager`[0m
+  [1m[94m--> [0msrc-tauri/src/xray/mod.rs:11:24
+   [1m[94m|[0m
+[1m[94m11[0m [1m[94m|[0m use tauri::{AppHandle, Manager};
+   [1m[94m|[0m                        [1m[33m^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused variable: `xray_binary`[0m
+   [1m[94m--> [0msrc-tauri/src/xray/mod.rs:409:5
+    [1m[94m|[0m
+[1m[94m409[0m [1m[94m|[0m     xray_binary: &std::path::Path,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_xray_binary`[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m: `zexor-vpn-desktop` (lib) generated 4 warnings (run `cargo fix --lib -p zexor-vpn-desktop` to apply 3 suggestions)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 44.19s
+[1m[32m        Info[0m symlinking lib "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" in jniLibs dir "/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libandroid.so"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libdl.so"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "liblog.so"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libm.so"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libc.so"
+Unable to strip the following libraries, packaging them as they are: libawg.so, libxray.so. Run with --info option to learn more.
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-2.11.5/mobile/android/src/main/java/app/tauri/AppPlugin.kt:35:37 'onBackPressed(): Unit' is deprecated. Deprecated in Java
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-2.11.5/mobile/android/src/main/java/app/tauri/plugin/Plugin.kt:107:5 'onDestroy(): Unit' is deprecated. use onDestroy(activity: AppCompatActivity) instead
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-2.11.5/mobile/android/src/main/java/app/tauri/plugin/Plugin.kt:112:5 'onRestart(): Unit' is deprecated. use onRestart(activity: AppCompatActivity) instead
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-2.11.5/mobile/android/src/main/java/app/tauri/plugin/PluginMethodData.kt:11:23 Parameter 'methodDecorator' is never used
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/tauri-plugin-zexor-vpn/android/src/main/java/site/zexorvpn/vpn/QuickToggleActivity.kt:21:9 'overridePendingTransition(Int, Int): Unit' is deprecated. Deprecated in Java
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/tauri-plugin-zexor-vpn/android/src/main/java/site/zexorvpn/vpn/QuickToggleActivity.kt:57:9 'overridePendingTransition(Int, Int): Unit' is deprecated. Deprecated in Java
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-plugin-notification-2.4.0/android/src/main/java/NotificationSchedule.kt:99:7 'when' is exhaustive so 'else' is redundant here
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/java/site/zexorvpn/desktop/generated/RustWebView.kt:26:18 'setter for databaseEnabled: Boolean' is deprecated. Deprecated in Java
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/java/site/zexorvpn/desktop/generated/WryActivity.kt:69:46 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
+      {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
+      The OnBackPressedDispatcher controls how back button events are dispatched
+      to one or more {@link OnBackPressedCallback} objects.
+
+[Incubating] Problems report is available at: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+    Finished 1 APK at:
+        /home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+
