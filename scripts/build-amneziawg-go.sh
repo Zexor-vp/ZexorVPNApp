@@ -2,7 +2,7 @@
 # Собирает движок AmneziaWG (amneziawg-go, лицензия MIT) из исходников на закреплённом коммите.
 # Использование: scripts/build-amneziawg-go.sh <GOOS> <GOARCH> <куда положить бинарник>
 #
-# Один патч: на Android нет /var/run, поэтому каталог сокета управления берётся из переменной окружения
+# Патчи: (1) на Android нет /var/run, поэтому каталог сокета управления берётся из переменной окружения
 # WG_SOCKET_DIR (приложение передаёт свою закрытую папку). Остальной код — как в апстриме.
 set -euo pipefail
 
@@ -61,6 +61,18 @@ s = s.replace(old, old + """
 	}""", 1)
 open(p, "w").write(s)
 PY
+fi
+
+# Windows: канал управления (named pipe) апстрим создаёт с владельцем SYSTEM («O:SY…»). Обычный администратор так не может
+# (ошибка «This security ID may not be assigned as the owner of this object», код 1307): ему нужно право SeRestorePrivilege.
+# Убираем явного владельца — им становится создатель канала (администратор). Права доступа прежние: только SYSTEM и
+# Администраторы, метка целостности «высокая».
+if [ "$GOOS_TARGET" = "windows" ] && [ -f ipc/uapi_windows.go ]; then
+  OLD_SDDL='O:SYD:P(A;;GA;;;SY)(A;;GA;;;BA)S:(ML;;NWNRNX;;;HI)'
+  NEW_SDDL='D:P(A;;GA;;;SY)(A;;GA;;;BA)S:(ML;;NWNRNX;;;HI)'
+  grep -qF "$OLD_SDDL" ipc/uapi_windows.go || { echo "не нашли SDDL в uapi_windows.go — апстрим изменился" >&2; exit 1; }
+  sed -i "s|$OLD_SDDL|$NEW_SDDL|" ipc/uapi_windows.go
+  grep -qF "\"$NEW_SDDL\"" ipc/uapi_windows.go || { echo "патч SDDL не применился" >&2; exit 1; }
 fi
 
 # Текст лицензии (MIT) нужно поставлять вместе с бинарником.
