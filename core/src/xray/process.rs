@@ -178,6 +178,35 @@ impl Drop for XrayProcess {
     }
 }
 
+/// Гасит «застрявшие» процессы нашего же xray (тот же путь к файлу), которые остались от прошлого запуска и держат порты:
+/// без этого новый xray падает с «Only one usage of each socket address». Чужие xray (другой путь) не трогаем.
+/// Вызывать только когда порты заняты и наш собственный туннель уже остановлен. Возвращает `true`, если команда выполнилась.
+pub fn kill_stale_xray(binary: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let path = binary.display().to_string().replace('\'', "''");
+        let script = format!(
+            "Get-CimInstance Win32_Process -Filter \"Name='xray.exe'\" | Where-Object {{ $_.ExecutablePath -ieq '{path}' }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"
+        );
+        Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .creation_flags(CREATE_NO_WINDOW)
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = binary;
+        false
+    }
+}
+
 /// Последние строки журнала xray: по ним видно, на чём он упал (в сообщение об ошибке для пользователя).
 fn log_tail(config_path: &Path) -> String {
     let Ok(text) = std::fs::read_to_string(config_path.with_file_name("xray.log")) else {

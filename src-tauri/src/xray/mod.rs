@@ -426,6 +426,33 @@ fn build_options(
     };
     state.settings.lock().unwrap().apply_to(&mut options);
 
+    // Стандартные порты 10808/10809 любит и v2rayN, и застрявший прошлый xray: если заняты — берём следующую пару,
+    // иначе xray сразу падает с «Only one usage of each socket address».
+    #[cfg(not(target_os = "android"))]
+    {
+        // Порты заняты — первым делом проверяем, не наш ли это застрявший xray от прошлого запуска (приложению ведь
+        // он не нужен): гасим его и даём системе освободить порты. Если заняты чужим — выбор другой пары ниже.
+        let default_busy = !(zexor_vpn_core::local_port_is_free(options.socks_port)
+            && zexor_vpn_core::local_port_is_free(options.http_port));
+        if default_busy && zexor_vpn_core::xray::process::kill_stale_xray(xray_binary) {
+            tracing::warn!("порты заняты: погашен застрявший xray от прошлого запуска");
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+        let picked =
+            zexor_vpn_core::pick_local_ports(zexor_vpn_core::local_port_is_free).or_else(|| {
+                let socks = zexor_vpn_core::probe::free_port()?;
+                let http = zexor_vpn_core::probe::free_port()?;
+                (socks != http).then_some((socks, http))
+            });
+        if let Some((socks, http)) = picked {
+            if (socks, http) != (options.socks_port, options.http_port) {
+                tracing::warn!(socks, http, "порты 10808/10809 заняты — используем другие");
+            }
+            options.socks_port = socks;
+            options.http_port = http;
+        }
+    }
+
     if options.mode == TunnelMode::Tun {
         if !zexor_vpn_core::elevation::is_elevated() {
             return Err(ConnectError::NeedsElevation);

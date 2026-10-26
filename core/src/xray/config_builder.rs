@@ -47,6 +47,28 @@ pub struct ConfigOptions {
     pub android_tun: bool,
 }
 
+/// Пары локальных портов (SOCKS, HTTP), которые приложение пробует по очереди: первый порт занят чужой программой
+/// (v2rayN, Clash, прошлый экземпляр xray) — берём следующую пару, а не падаем с «only one usage of each socket address».
+pub const LOCAL_PORT_PAIRS: [(u16, u16); 4] = [
+    (10808, 10809),
+    (10818, 10819),
+    (10828, 10829),
+    (10838, 10839),
+];
+
+/// Первая пара портов из [`LOCAL_PORT_PAIRS`], у которой свободны оба порта.
+pub fn pick_local_ports(is_free: impl Fn(u16) -> bool) -> Option<(u16, u16)> {
+    LOCAL_PORT_PAIRS
+        .iter()
+        .copied()
+        .find(|&(socks, http)| is_free(socks) && is_free(http))
+}
+
+/// Свободен ли локальный порт: пробуем занять его так же, как это сделает xray.
+pub fn local_port_is_free(port: u16) -> bool {
+    std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
+}
+
 impl Default for ConfigOptions {
     fn default() -> Self {
         Self {
@@ -350,6 +372,28 @@ mod tests {
     use crate::xray::parser::parse_vless_uri;
 
     const REALITY_URI: &str = "vless://00000000-1111-2222-3333-444444444444@203.0.113.10:10443?type=tcp&security=reality&pbk=EXAMPLEPublicKeyForTestsOnly0000000000000000&fp=chrome&sni=example.com&sid=0123456789abcdef&spx=%2F&flow=xtls-rprx-vision#US";
+
+    #[test]
+    fn local_ports_skip_busy_pair() {
+        assert_eq!(pick_local_ports(|_| true), Some((10808, 10809)));
+        // HTTP-порт первой пары занят чужой программой — берём вторую пару
+        assert_eq!(pick_local_ports(|p| p != 10809), Some((10818, 10819)));
+        // SOCKS-порт второй пары тоже занят — третья
+        assert_eq!(
+            pick_local_ports(|p| p != 10809 && p != 10818),
+            Some((10828, 10829))
+        );
+        assert_eq!(pick_local_ports(|_| false), None);
+    }
+
+    #[test]
+    fn busy_real_port_is_detected() {
+        let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        assert!(!local_port_is_free(port));
+        drop(listener);
+        assert!(local_port_is_free(port));
+    }
 
     fn reality_config(opts: ConfigOptions) -> Value {
         let node = parse_vless_uri(REALITY_URI).unwrap();
