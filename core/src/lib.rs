@@ -28,7 +28,9 @@ pub use xray::config_builder::{
     build_config, build_node_config, local_port_is_free, pick_local_ports, ConfigOptions,
     TunnelMode,
 };
-pub use xray::node::{parse_nodes, placeholder_reason, Node};
+pub use xray::node::{
+    is_extra_balanced, parse_nodes, placeholder_reason, preferred_balanced, Node,
+};
 pub use xray::parser::{parse_subscription, parse_vless_uri, ParseError, Security, VlessNode};
 pub use xray::process::{XrayError, XrayProcess};
 pub use xray::profile::Profile;

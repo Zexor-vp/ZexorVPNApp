@@ -52,6 +52,42 @@ impl Node {
     pub fn is_balanced(&self) -> bool {
         matches!(self, Node::Profile(p) if p.is_balanced())
     }
+
+    fn balancer_count(&self) -> usize {
+        match self {
+            Node::Profile(p) => p.balancer_count(),
+            _ => 0,
+        }
+    }
+}
+
+/// Профиль-балансировщик для «Авто выбор». В подписке может быть общий AUTO и личный (например, с правилами
+/// для Claude через отдельный адрес): берём тот, у которого больше балансировщиков, — порядок профилей
+/// в подписке меняется от запроса к запросу, на него полагаться нельзя. При равенстве — первый.
+pub fn preferred_balanced(nodes: &[Node]) -> Option<&Node> {
+    let mut best: Option<&Node> = None;
+    for node in nodes.iter().filter(|n| n.is_balanced()) {
+        if best.map_or(true, |b| node.balancer_count() > b.balancer_count()) {
+            best = Some(node);
+        }
+    }
+    best
+}
+
+/// Дополнительный (личный) AUTO: профилей-балансировщиков несколько, а у этого балансировщиков больше, чем
+/// у самого простого. Такой профиль показываем в списке серверов, чтобы его можно было выбрать вручную;
+/// общий AUTO остаётся за переключателем «Авто выбор».
+pub fn is_extra_balanced(nodes: &[Node], node: &Node) -> bool {
+    if !node.is_balanced() {
+        return false;
+    }
+    let simplest = nodes
+        .iter()
+        .filter(|n| n.is_balanced())
+        .map(Node::balancer_count)
+        .min()
+        .unwrap_or(0);
+    node.balancer_count() > simplest
 }
 
 /// Разбирает тело подписки в список узлов обоих поддерживаемых протоколов.

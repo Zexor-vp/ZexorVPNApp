@@ -79,8 +79,9 @@ pub async fn list_nodes(
     Ok(NodesResponse {
         nodes: nodes
             .iter()
-            // Панельный «AUTO» — не сервер: его место занимает переключатель «Авто выбор».
-            .filter(|n| !n.is_balanced())
+            // Панельный «AUTO» — не сервер: его место занимает переключатель «Авто выбор». Личный AUTO
+            // (с отдельными правилами) остаётся в списке — его можно выбрать вручную.
+            .filter(|n| !n.is_balanced() || zexor_vpn_core::is_extra_balanced(&nodes, n))
             .map(|n| NodeSummary {
                 remark: n.remark().to_string(),
                 protocol: n.protocol().to_string(),

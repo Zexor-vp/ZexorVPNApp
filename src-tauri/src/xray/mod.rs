@@ -793,7 +793,7 @@ pub async fn connect_auto(
     if source_id == ACCOUNT_SOURCE {
         let is_wireguard = servers.iter().any(|n| n.protocol() == "wireguard");
         if !is_wireguard {
-            if let Some(panel_auto) = nodes.iter().find(|n| n.is_balanced()) {
+            if let Some(panel_auto) = zexor_vpn_core::preferred_balanced(nodes) {
                 start_tunnel(
                     app,
                     state,
@@ -829,7 +829,7 @@ pub async fn connect_auto(
 
     if servers.is_empty() {
         // В чужой подписке только готовый балансировщик — запускаем его как есть.
-        let Some(balanced) = nodes.iter().find(|n| n.is_balanced()) else {
+        let Some(balanced) = zexor_vpn_core::preferred_balanced(nodes) else {
             return Err(ConnectError::NothingToBalance);
         };
         start_tunnel(

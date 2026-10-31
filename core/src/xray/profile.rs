@@ -56,6 +56,15 @@ impl Profile {
         })
     }
 
+    /// Сколько балансировщиков в профиле. У личного AUTO (с отдельными правилами, например для Claude) их больше,
+    /// чем у общего.
+    pub fn balancer_count(&self) -> usize {
+        self.config
+            .pointer("/routing/balancers")
+            .and_then(Value::as_array)
+            .map_or(0, Vec::len)
+    }
+
     /// Сервер для YouTube без рекламы: по названию, так же узнаёт их и панель.
     pub fn is_youtube(&self) -> bool {
         self.remark.to_lowercase().contains("youtube")
@@ -252,6 +261,41 @@ pub(crate) mod tests {
             config
         }
         .is_balanced());
+    }
+
+    #[test]
+    fn personal_auto_with_extra_balancer_is_preferred_and_listed() {
+        use crate::xray::node::{is_extra_balanced, preferred_balanced, Node};
+        let mut personal = auto_profile();
+        personal["remarks"] = json!("🌍 AUTO + Claude · личный");
+        personal["outbounds"].as_array_mut().unwrap().push(
+            json!({"tag": "claude", "protocol": "vless", "settings": {"vnext": [{"address": "203.0.113.9", "port": 443, "users": [{"id": "00000000-1111-2222-3333-444444444444", "encryption": "none"}]}]}}),
+        );
+        personal["routing"]["balancers"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"tag": "Claude_Balancer", "selector": ["claude"]}));
+        let common = Node::Profile(Profile {
+            remark: "AUTO".into(),
+            config: auto_profile(),
+        });
+        let personal = Node::Profile(Profile {
+            remark: "AUTO личный".into(),
+            config: personal,
+        });
+        // личный стоит ПЕРВЫМ или ВТОРЫМ — выбор от порядка в подписке не зависит
+        for nodes in [
+            vec![common.clone(), personal.clone()],
+            vec![personal.clone(), common.clone()],
+        ] {
+            assert_eq!(preferred_balanced(&nodes).unwrap().remark(), "AUTO личный");
+            assert!(is_extra_balanced(&nodes, &personal));
+            assert!(!is_extra_balanced(&nodes, &common));
+        }
+        // единственный AUTO — как раньше: в список серверов не попадает
+        let only = vec![personal.clone()];
+        assert_eq!(preferred_balanced(&only).unwrap().remark(), "AUTO личный");
+        assert!(!is_extra_balanced(&only, &personal));
     }
 
     #[test]
