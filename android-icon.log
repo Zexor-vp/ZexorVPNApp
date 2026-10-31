@@ -1,0 +1,38 @@
+== до замены
+src-tauri/gen/android/app/src/main/res/drawable-v24/ic_launcher_foreground.xml
+src-tauri/gen/android/app/src/main/res/drawable/ic_launcher_background.xml
+src-tauri/gen/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+src-tauri/gen/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+src-tauri/gen/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+== после замены
+src-tauri/gen/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+src-tauri/gen/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+src-tauri/gen/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+src-tauri/gen/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+src-tauri/gen/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+src-tauri/gen/android/app/src/main/res/values/ic_launcher_background.xml
+066e78de3544f891d9d4abbbb388dd813da7e2d7895b441a1c9cc67c05daac0e  src-tauri/gen/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+066e78de3544f891d9d4abbbb388dd813da7e2d7895b441a1c9cc67c05daac0e  src-tauri/icons/android/mipmap-xxxhdpi/ic_launcher.png
