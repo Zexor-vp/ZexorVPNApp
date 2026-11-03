@@ -809,6 +809,28 @@ h2 {
   font-size: 0.9rem;
 }
 
+.login-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.qr-code {
+  display: block;
+  border-radius: 12px;
+  border: 6px solid #ffffff;
+  background: #ffffff;
+  max-width: 100%;
+  height: auto;
+}
+
+.login-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .form-error {
   margin: 0;
   color: var(--danger);

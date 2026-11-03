@@ -355,5 +355,13 @@ const dict: Record<string, string> = {
   "Подписка ({0} серв.)": "Abonnement ({0} serveurs)",
   "Другой сервис": "Autre service",
   "Можно докупить не больше {n}": "Vous pouvez en ajouter {n} au maximum",
+  "Войти по QR-коду": "Se connecter par code QR",
+  "Войти через личный кабинет": "Se connecter via l’espace personnel",
+  "Отсканируйте QR-код телефоном, где работает Telegram, и нажмите «Start» в боте — вход подтвердится здесь автоматически.": "Scannez le code QR avec un téléphone où Telegram fonctionne et appuyez sur « Start » dans le bot — la connexion sera confirmée ici automatiquement.",
+  "Войдите в личный кабинет в открывшемся браузере или отсканируйте QR-код телефоном — приложение войдёт автоматически.": "Connectez-vous à votre espace personnel dans le navigateur ouvert ou scannez le code QR avec votre téléphone — l’application se connectera automatiquement.",
+  "Скопировать ссылку": "Copier le lien",
+  "Ссылка скопирована": "Lien copié",
+  "Telegram не открывается без VPN? Войдите по QR-коду: отсканируйте его телефоном — на нём Telegram работает.": "Telegram ne s’ouvre pas sans VPN ? Connectez-vous par code QR : scannez-le avec votre téléphone, où Telegram fonctionne.",
+  "Возвращаем соединение после сна…": "Rétablissement de la connexion après la mise en veille…",
 };
 export default dict;

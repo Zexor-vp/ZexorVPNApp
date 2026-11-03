@@ -136,6 +136,18 @@ fn ensure_outbound(config: &mut Value, tag: &str, protocol: &str) {
     }
 }
 
+/// В режиме TUN весь IPv6 режется правилом `::/0 → block` (туннель его не несёт). Но при `domainStrategy: IPIfNonMatch` (он стоит в шаблоне
+/// панели по умолчанию и в нашем балансировщике) маршрутизатор сам резолвит домен цели и сверяет ВСЕ полученные адреса с IP-правилами:
+/// AAAA-ответ у Google, YouTube, Cloudflare и большинства сайтов попадал под `::/0`, и соединение блокировалось, хотя шло по IPv4 —
+/// в логе `tun-in -> block`, а на сервере не появлялось ни одного запроса к этим сайтам (проверено на конфиге Японии в сетевом пространстве имён).
+/// Просим внутренний DNS xray отдавать только IPv4: настоящий IPv6-трафик по-прежнему режется правилом.
+fn ipv4_only_dns(config: &mut Value) {
+    match config.get_mut("dns") {
+        Some(dns) if dns.is_object() => dns["queryStrategy"] = json!("UseIPv4"),
+        _ => config["dns"] = json!({ "servers": ["localhost"], "queryStrategy": "UseIPv4" }),
+    }
+}
+
 /// Конфиг для профиля подписки: сам профиль (серверы, балансировщики, наблюдатель) остаётся как есть,
 /// подменяются только локальные входы приложения и добавляются пользовательские правила.
 pub fn profile_config(profile: &Profile, opts: &ConfigOptions) -> Value {
@@ -163,6 +175,9 @@ pub fn profile_config(profile: &Profile, opts: &ConfigOptions) -> Value {
         config["routing"] = json!({ "domainStrategy": "IPIfNonMatch" });
     }
     config["routing"]["rules"] = Value::Array(rules);
+    if opts.mode == TunnelMode::Tun || opts.android_tun {
+        ipv4_only_dns(&mut config);
+    }
     config
 }
 
@@ -261,7 +276,7 @@ pub fn build_balanced_config(nodes: &[Node], opts: &ConfigOptions) -> Option<Val
         subjects.push("youtube-");
     }
 
-    Some(json!({
+    let mut config = json!({
         "log": build_log(opts),
         "inbounds": build_inbounds(opts),
         "outbounds": outbounds,
@@ -276,7 +291,11 @@ pub fn build_balanced_config(nodes: &[Node], opts: &ConfigOptions) -> Option<Val
                 "sampling": 1
             }
         }
-    }))
+    });
+    if opts.mode == TunnelMode::Tun || opts.android_tun {
+        ipv4_only_dns(&mut config);
+    }
+    Some(config)
 }
 
 #[cfg(test)]
@@ -298,6 +317,54 @@ mod tests {
             .iter()
             .map(target_of)
             .collect()
+    }
+
+    #[test]
+    fn tun_mode_asks_dns_for_ipv4_only_so_the_ipv6_block_rule_never_matches_a_resolved_domain() {
+        let tun = ConfigOptions {
+            mode: TunnelMode::Tun,
+            ..ConfigOptions::default()
+        };
+        let proxy = ConfigOptions::default();
+        // профиль уже со своим dns (как у шаблона панели): стратегия добавляется, серверы остаются
+        let mut with_dns = vless_profile("x", "203.0.113.10");
+        with_dns["dns"] = json!({ "servers": ["1.1.1.1", "1.0.0.1"] });
+        let cfg = profile_config(
+            &Profile {
+                remark: "x".into(),
+                config: with_dns.clone(),
+            },
+            &tun,
+        );
+        assert_eq!(cfg["dns"]["queryStrategy"], "UseIPv4");
+        assert_eq!(cfg["dns"]["servers"][0], "1.1.1.1");
+        // профиль без dns: появляется системный DNS только по IPv4
+        let mut no_dns = vless_profile("x", "203.0.113.10");
+        no_dns.as_object_mut().unwrap().remove("dns");
+        let cfg = profile_config(
+            &Profile {
+                remark: "x".into(),
+                config: no_dns,
+            },
+            &tun,
+        );
+        assert_eq!(cfg["dns"]["queryStrategy"], "UseIPv4");
+        // обычный режим (системный прокси) не трогаем: там правила `::/0` нет
+        let cfg = profile_config(
+            &Profile {
+                remark: "x".into(),
+                config: with_dns,
+            },
+            &proxy,
+        );
+        assert!(cfg["dns"].get("queryStrategy").is_none());
+        // собственный балансировщик в TUN — тоже
+        let nodes = vec![profile_node(vless_profile("A", "203.0.113.10"))];
+        assert_eq!(
+            build_balanced_config(&nodes, &tun).unwrap()["dns"]["queryStrategy"],
+            "UseIPv4"
+        );
+        assert!(build_balanced_config(&nodes, &proxy).unwrap()["dns"].is_null());
     }
 
     #[test]

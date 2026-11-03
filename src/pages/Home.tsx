@@ -99,6 +99,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
   const [crash, setCrash] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wakeNote, setWakeNote] = useState<string | null>(null);
 
   // Android: если прошлый запуск завершился аварийно, показываем причину — по ней можно понять, что случилось.
   useEffect(() => {
@@ -262,6 +263,53 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
     let unlisten: (() => void) | undefined;
     let cancelled = false;
     listen('subscription-changed', () => void refreshRef.current())
+      .then((off) => {
+        if (cancelled) off();
+        else unlisten = off;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Компьютер проснулся после сна: Wi‑Fi переподключается не сразу, а xray остался привязан к прежнему интерфейсу — без
+  // переподключения было «Нет связи с сервером», пока не перезапустишь приложение. Событие шлёт оболочка (Windows).
+  const wakeRunning = useRef(false);
+  const recoverAfterWake = useCallback(async () => {
+    if (wakeRunning.current) return; // за пробуждением идут сразу два сообщения Windows — достаточно одного разбора
+    wakeRunning.current = true;
+    setWakeNote(t('Возвращаем соединение после сна…'));
+    const delays = [1500, 3000, 6000, 10000, 15000, 25000]; // сеть поднимается секунд за 5–40
+    try {
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          const current = await connectionStatus();
+          if (current.connected) {
+            if (current.auto) await autoConnect(current.source_id ?? undefined);
+            else if (current.node_remark) await connect(current.node_remark, current.source_id ?? undefined);
+            setStatus(await connectionStatus().catch(() => current));
+          }
+          setError(null);
+          await refreshRef.current();
+          return;
+        } catch {
+          if (attempt >= delays.length) return;
+          await new Promise((resolve) => window.setTimeout(resolve, delays[attempt]));
+        }
+      }
+    } finally {
+      wakeRunning.current = false;
+      setWakeNote(null);
+    }
+  }, [t]);
+  const recoverRef = useRef(recoverAfterWake);
+  recoverRef.current = recoverAfterWake;
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    listen('system-resumed', () => void recoverRef.current())
       .then((off) => {
         if (cancelled) off();
         else unlisten = off;
@@ -588,6 +636,7 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
         </Button>
 
         {autoInfo && (status.connected || busy) && <p className="muted" style={{ margin: 0 }}>{autoInfo}</p>}
+        {wakeNote && <p className="muted" style={{ margin: 0 }}>{wakeNote}</p>}
         {(error || nodesError) && <p className="form-error">{error ?? nodesError}</p>}
       </section>
       )}

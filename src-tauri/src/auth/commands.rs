@@ -61,21 +61,31 @@ fn store_session(
 #[derive(Debug, Serialize)]
 pub struct TelegramLoginStart {
     pub token: String,
+    /// Ссылка на бота с одноразовым токеном — по ней же строится QR-код для входа с телефона.
+    pub url: String,
 }
 
 /// Вход через Telegram: получаем одноразовый токен и открываем бота с
 /// `/start webauth_<token>`; дальше фронтенд поллит `poll_telegram_login`.
+/// `open_browser = false` — ссылку в браузере не открываем (на компьютере без VPN Telegram недоступен):
+/// приложение показывает QR-код, который сканируют телефоном, где Telegram работает.
 #[tauri::command]
 pub async fn start_telegram_login(
     state: State<'_, AppState>,
+    open_browser: Option<bool>,
 ) -> Result<TelegramLoginStart, CommandError> {
     let link = state.api.deeplink_request().await.map_err(api_error)?;
     let url = format!(
         "https://t.me/{}?start=webauth_{}",
         link.bot_username, link.token
     );
-    open_in_browser(&url).map_err(CommandError::from)?;
-    Ok(TelegramLoginStart { token: link.token })
+    if open_browser.unwrap_or(true) {
+        open_in_browser(&url).map_err(CommandError::from)?;
+    }
+    Ok(TelegramLoginStart {
+        token: link.token,
+        url,
+    })
 }
 
 /// `Ok(None)` — пользователь ещё не подтвердил вход в боте.
@@ -100,7 +110,10 @@ pub async fn poll_telegram_login(
 /// `/adblock/connect?state=…&source=desktop[&provider=google]` и возвращаем
 /// `state`, по которому фронтенд поллит `poll_browser_login`.
 #[tauri::command]
-pub async fn start_browser_login(provider: Option<String>) -> Result<String, CommandError> {
+pub async fn start_browser_login(
+    provider: Option<String>,
+    open_browser: Option<bool>,
+) -> Result<String, CommandError> {
     let pair_state = random_state().map_err(CommandError::from)?;
     let mut url = format!("{WEB_LOGIN_BASE_URL}/adblock/connect?state={pair_state}&source=desktop");
     if let Some(provider) = provider {
@@ -114,7 +127,10 @@ pub async fn start_browser_login(provider: Option<String>) -> Result<String, Com
             url.push_str(&format!("&provider={provider}"));
         }
     }
-    open_in_browser(&url).map_err(CommandError::from)?;
+    // `open_browser = false` — только создаём пару: адрес страницы фронтенд показывает QR-кодом для входа с другого устройства.
+    if open_browser.unwrap_or(true) {
+        open_in_browser(&url).map_err(CommandError::from)?;
+    }
     Ok(pair_state)
 }
 

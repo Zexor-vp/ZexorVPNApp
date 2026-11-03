@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import Button from '../components/Button';
 import LanguageCard from '../components/LanguageCard';
 import PageShell from '../components/PageShell';
+import QrCode from '../components/QrCode';
 import {
   errorMessage,
   login,
@@ -20,7 +21,9 @@ const BOT_URL = 'https://t.me/Zexorvpnbot';
 const POLL_INTERVAL_MS = 2000;
 const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 
-type Pending = 'telegram' | 'google' | null;
+// telegram — бот открывается в браузере этого ПК; telegram-qr — только QR-код для телефона (на ПК без VPN Telegram не открывается);
+// cabinet — вход через страницу личного кабинета (браузер + тот же адрес QR-кодом для другого устройства).
+type Pending = 'telegram' | 'telegram-qr' | 'cabinet' | 'google' | null;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -35,6 +38,8 @@ export default function Login({ onSuccess }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const cancelled = useRef(false);
 
   // Опрашивает сервер, пока пользователь подтверждает вход в боте/браузере.
@@ -51,15 +56,22 @@ export default function Login({ onSuccess }: Props) {
     return null;
   }
 
-  async function handleExternalLogin(kind: 'telegram' | 'google') {
+  async function handleExternalLogin(kind: Exclude<Pending, null>) {
     setError(null);
+    setQrUrl(null);
+    setCopied(false);
     cancelled.current = false;
     setPending(kind);
     try {
       let session: SessionInfo | null;
-      if (kind === 'telegram') {
-        const { token } = await startTelegramLogin();
+      if (kind === 'telegram' || kind === 'telegram-qr') {
+        const { token, url } = await startTelegramLogin(kind === 'telegram');
+        setQrUrl(url);
         session = await waitForLogin(() => pollTelegramLogin(token));
+      } else if (kind === 'cabinet') {
+        const pairState = await startBrowserLogin(undefined, true);
+        setQrUrl(`${CABINET_URL}/adblock/connect?state=${pairState}&source=desktop`);
+        session = await waitForLogin(() => pollBrowserLogin(pairState));
       } else {
         const pairState = await startBrowserLogin('google');
         session = await waitForLogin(() => pollBrowserLogin(pairState));
@@ -69,12 +81,25 @@ export default function Login({ onSuccess }: Props) {
       setError(errorMessage(err));
     } finally {
       setPending(null);
+      setQrUrl(null);
     }
   }
 
   function cancelExternalLogin() {
     cancelled.current = true;
     setPending(null);
+    setQrUrl(null);
+  }
+
+  async function copyLink() {
+    if (!qrUrl) return;
+    try {
+      await navigator.clipboard.writeText(qrUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // буфер обмена недоступен — ссылку всё равно можно отсканировать с экрана
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -105,8 +130,20 @@ export default function Login({ onSuccess }: Props) {
             <p>
               {pending === 'telegram'
                 ? t('Откройте бота в Telegram и нажмите «Start» — вход подтвердится автоматически.')
-                : t('Завершите вход через Google в открывшемся браузере — приложение войдёт автоматически.')}
+                : pending === 'telegram-qr'
+                  ? t('Отсканируйте QR-код телефоном, где работает Telegram, и нажмите «Start» в боте — вход подтвердится здесь автоматически.')
+                  : pending === 'cabinet'
+                    ? t('Войдите в личный кабинет в открывшемся браузере или отсканируйте QR-код телефоном — приложение войдёт автоматически.')
+                    : t('Завершите вход через Google в открывшемся браузере — приложение войдёт автоматически.')}
             </p>
+            {qrUrl && (
+              <div className="login-qr">
+                <QrCode value={qrUrl} size={188} />
+                <Button type="button" variant="secondary" onClick={() => void copyLink()}>
+                  {copied ? t('Ссылка скопирована') : t('Скопировать ссылку')}
+                </Button>
+              </div>
+            )}
             <Button type="button" variant="ghost" onClick={cancelExternalLogin}>
               {t('Отмена')}
             </Button>
@@ -117,10 +154,17 @@ export default function Login({ onSuccess }: Props) {
               <Button type="button" variant="secondary" onClick={() => handleExternalLogin('telegram')}>
                 {t('Войти через Telegram')}
               </Button>
+              <Button type="button" variant="secondary" onClick={() => handleExternalLogin('telegram-qr')}>
+                {t('Войти по QR-коду')}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => handleExternalLogin('cabinet')}>
+                {t('Войти через личный кабинет')}
+              </Button>
               <Button type="button" variant="secondary" onClick={() => handleExternalLogin('google')}>
                 {t('Войти через Google')}
               </Button>
             </div>
+            <p className="muted login-hint">{t('Telegram не открывается без VPN? Войдите по QR-коду: отсканируйте его телефоном — на нём Telegram работает.')}</p>
             <div className="login-divider">
               <span>{t('или по email')}</span>
             </div>

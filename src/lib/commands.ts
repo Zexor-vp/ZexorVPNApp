@@ -65,15 +65,17 @@ export function needsLogin(err: unknown): boolean {
 export const login = (email: string, password: string): Promise<SessionInfo> =>
   invoke('login', { email, password });
 
-export const startTelegramLogin = (): Promise<{ token: string }> => invoke('start_telegram_login');
+/** `openBrowser = false` — бота в браузере не открываем: ссылка (`url`) показывается QR-кодом для телефона. */
+export const startTelegramLogin = (openBrowser = true): Promise<{ token: string; url: string }> =>
+  invoke('start_telegram_login', { openBrowser });
 
 /** `null` — пользователь ещё не подтвердил вход в боте. */
 export const pollTelegramLogin = (token: string): Promise<SessionInfo | null> =>
   invoke('poll_telegram_login', { token });
 
 /** Открывает веб-страницу входа в браузере и возвращает `state` для поллинга. */
-export const startBrowserLogin = (provider?: string): Promise<string> =>
-  invoke('start_browser_login', { provider: provider ?? null });
+export const startBrowserLogin = (provider?: string, openBrowser = true): Promise<string> =>
+  invoke('start_browser_login', { provider: provider ?? null, openBrowser });
 
 /** `null` — пользователь ещё не завершил вход в браузере. */
 export const pollBrowserLogin = (pairState: string): Promise<SessionInfo | null> =>

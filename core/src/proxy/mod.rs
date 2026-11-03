@@ -176,6 +176,15 @@ pub fn restore_after_crash() -> bool {
     false
 }
 
+/// Действие при пробуждении компьютера после сна (Windows): вызывается из окна-наблюдателя в его потоке, поэтому быстрое и без блокировок.
+/// На других системах ничего не делает.
+pub fn set_resume_hook(hook: impl Fn() + Send + Sync + 'static) {
+    #[cfg(windows)]
+    windows_proxy::set_resume_hook(hook);
+    #[cfg(not(windows))]
+    let _ = hook;
+}
+
 /// Следит за завершением сеанса Windows (выключение, выход из системы) и возвращает системный прокси до того, как
 /// процесс убьют. На других системах ничего не делает.
 pub fn install_session_end_guard() {

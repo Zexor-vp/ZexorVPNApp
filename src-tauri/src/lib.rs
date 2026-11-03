@@ -182,6 +182,11 @@ pub fn run() {
             #[cfg(windows)]
             {
                 zexor_vpn_core::proxy::restore_after_crash();
+                // Пробуждение после сна: сообщаем фронтенду — он переподключит VPN (интерфейс/адрес после сна мог смениться).
+                let wake_handle = app.handle().clone();
+                zexor_vpn_core::proxy::set_resume_hook(move || {
+                    let _ = tauri::Emitter::emit(&wake_handle, "system-resumed", ());
+                });
                 zexor_vpn_core::proxy::install_session_end_guard();
             }
             app.manage(state::AppState::default());
