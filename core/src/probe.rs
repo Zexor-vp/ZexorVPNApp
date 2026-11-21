@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use serde_json::{json, Value};
 use thiserror::Error;
 use tokio::net::TcpStream;
 use tokio::sync::Semaphore;
@@ -108,17 +109,60 @@ pub fn free_port() -> Option<u16> {
         .map(|a| a.port())
 }
 
-fn probe_config_path(port: u16) -> PathBuf {
-    std::env::temp_dir().join(format!("zexor-probe-{}-{port}.json", std::process::id()))
+struct ProbeFiles(PathBuf);
+
+impl ProbeFiles {
+    fn new(port: u16) -> std::io::Result<Self> {
+        let dir = std::env::temp_dir().join(format!("zexor-probe-{}-{port}", std::process::id()));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            std::fs::DirBuilder::new().mode(0o700).create(&dir)?;
+        }
+        #[cfg(not(unix))]
+        std::fs::create_dir(&dir)?;
+        Ok(Self(dir))
+    }
+}
+
+impl Drop for ProbeFiles {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn build_probe_config(node: &Node, options: &ConfigOptions) -> Value {
+    let mut config = build_node_config(node, options);
+    if let Some(inbounds) = config.get_mut("inbounds").and_then(Value::as_array_mut) {
+        inbounds.retain(|inbound| inbound["tag"] == "socks-in");
+    }
+
+    if let Node::Profile(profile) = node {
+        if let Some(tag) = profile
+            .proxy_outbound()
+            .and_then(|outbound| outbound.get("tag"))
+            .and_then(Value::as_str)
+            .filter(|_| !profile.is_balanced())
+        {
+            // Проверяем этот сервер даже у профилей, которые обычные сайты открывают напрямую.
+            // Оставляем все исходящие: основной может ссылаться на другой через dialerProxy.
+            config["routing"] = json!({
+                "rules": [{ "type": "field", "network": "tcp,udp", "outboundTag": tag }]
+            });
+            if let Some(config) = config.as_object_mut() {
+                config.remove("burstObservatory");
+                config.remove("observatory");
+            }
+        }
+    }
+    config
 }
 
 /// Реальная задержка: время ответа `generate_204` через отдельный экземпляр xray с этим узлом.
 pub async fn real_delay(binary: &Path, node: &Node) -> Result<u32, ProbeError> {
     let socks_port = free_port().ok_or(ProbeError::NoFreePort)?;
-    let http_port = free_port().ok_or(ProbeError::NoFreePort)?;
     let options = ConfigOptions {
         socks_port,
-        http_port,
         adblock_domains: Vec::new(),
         adblock_allow_domains: Vec::new(),
         bypass_private: true,
@@ -126,8 +170,9 @@ pub async fn real_delay(binary: &Path, node: &Node) -> Result<u32, ProbeError> {
         access_log_path: None,
         ..ConfigOptions::default()
     };
-    let config = build_node_config(node, &options);
-    let config_path = probe_config_path(socks_port);
+    let config = build_probe_config(node, &options);
+    let files = ProbeFiles::new(socks_port).map_err(|err| ProbeError::Start(err.to_string()))?;
+    let config_path = files.0.join("config.json");
 
     // XrayProcess::start спит и пишет файл синхронно — не держим им асинхронный рантайм.
     let binary = binary.to_path_buf();
@@ -141,7 +186,6 @@ pub async fn real_delay(binary: &Path, node: &Node) -> Result<u32, ProbeError> {
     let outcome = measure_through_socks(socks_port).await;
 
     drop(process);
-    let _ = std::fs::remove_file(&config_path);
     outcome
 }
 
@@ -211,6 +255,28 @@ pub async fn real_delay_many(
     out
 }
 
+fn unanswered_vless(nodes: &[Node], pings: &[Option<u32>]) -> Vec<usize> {
+    nodes
+        .iter()
+        .zip(pings)
+        .enumerate()
+        .filter_map(|(index, (node, ms))| {
+            (ms.is_none() && node.protocol() == "vless").then_some(index)
+        })
+        .collect()
+}
+
+/// Повторная проверка VLESS через Xray, если быстрый TCP-замер не удался.
+pub async fn retry_vless_pings(binary: &Path, nodes: &[Node], pings: &mut [Option<u32>]) {
+    let indices = unanswered_vless(nodes, pings);
+    let retries: Vec<_> = indices.iter().map(|&index| nodes[index].clone()).collect();
+    for (index, outcome) in real_delay_many(binary, &retries, 4).await {
+        if let Ok(ms) = outcome {
+            pings[indices[index]] = Some(ms);
+        }
+    }
+}
+
 /// Лучший (с минимальной задержкой) из успешно проверенных.
 pub fn best_of(outcomes: &[ProbeOutcome]) -> Option<(usize, u32)> {
     outcomes
@@ -255,6 +321,40 @@ mod tests {
         let result = tcp_ping_many(&nodes, Duration::from_millis(800)).await;
         assert!(result[0].is_some() && result[2].is_some());
         assert!(result[1].is_none());
+    }
+
+    #[test]
+    fn retry_only_unanswered_vless() {
+        let nodes = crate::parse_nodes(concat!(
+            "vless://00000000-1111-2222-3333-444444444444@203.0.113.10:443#Brazil\n",
+            "wireguard://k@203.0.113.5:51820?publickey=a&address=10.0.0.2%2F32#Brazil\n",
+            "vless://00000000-1111-2222-3333-444444444444@203.0.113.10:20022#YouTube"
+        ))
+        .unwrap();
+        assert_eq!(unanswered_vless(&nodes, &[Some(72), None, None]), [2]);
+        assert!(unanswered_vless(&nodes, &[Some(72), None, Some(180)]).is_empty());
+    }
+
+    #[test]
+    fn probe_uses_the_selected_outbound_even_for_split_profiles() {
+        let mut nodes = crate::parse_nodes(
+            &json!([{
+                "remarks":"YouTube #3",
+                "outbounds":[
+                    {"tag":"main","protocol":"vless"},
+                    {"tag":"direct","protocol":"freedom"}
+                ],
+                "routing":{"rules":[{"outboundTag":"direct","network":"tcp,udp"}]}
+            }])
+            .to_string(),
+        )
+        .unwrap();
+        let node = nodes.pop().unwrap();
+        let config = build_probe_config(&node, &ConfigOptions::default());
+        assert_eq!(config["routing"]["rules"][0]["outboundTag"], "main");
+        assert_eq!(config["inbounds"].as_array().unwrap().len(), 1);
+        assert_eq!(config["inbounds"][0]["tag"], "socks-in");
+        assert_eq!(config["outbounds"][1]["tag"], "direct");
     }
 
     #[test]

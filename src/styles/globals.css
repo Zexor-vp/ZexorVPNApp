@@ -1135,11 +1135,6 @@ h2 {
   border-color: rgba(251, 146, 60, 0.35);
 }
 
-.ping-down {
-  color: var(--danger);
-  border-color: rgba(239, 68, 68, 0.4);
-}
-
 .ping-pending {
   color: var(--text-dim);
 }

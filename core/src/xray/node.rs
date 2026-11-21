@@ -61,6 +61,16 @@ impl Node {
     }
 }
 
+/// Протокол аккаунта, который может показать клиент. Если выбранный протокол
+/// пропал из подписки, переключаемся на VLESS при наличии доступных серверов.
+pub fn account_protocol<'a>(nodes: &[Node], preferred: &'a str) -> Option<&'a str> {
+    [preferred, "vless"].into_iter().find(|protocol| {
+        nodes
+            .iter()
+            .any(|node| node.protocol() == *protocol && !node.is_balanced())
+    })
+}
+
 /// Профиль-балансировщик для «Авто выбор». В подписке может быть общий AUTO и личный (например, с правилами
 /// для Claude через отдельный адрес): берём тот, у которого больше балансировщиков, — порядок профилей
 /// в подписке меняется от запроса к запросу, на него полагаться нельзя. При равенстве — первый.
@@ -209,6 +219,18 @@ mod tests {
         assert_eq!(protocols, ["vless", "wireguard"]);
         assert!(nodes[0].is_reality());
         assert!(!nodes[1].is_reality());
+    }
+
+    #[test]
+    fn matching_names_do_not_override_the_account_protocol() {
+        let nodes = parse_nodes(&format!("{VLESS}\n{}", WG.replace("#Germany", "#Czech"))).unwrap();
+        assert_eq!(nodes[0].remark(), nodes[1].remark());
+
+        let protocol = account_protocol(&nodes, "wireguard").unwrap();
+        let selected = nodes.iter().find(|node| node.protocol() == protocol);
+        assert!(matches!(selected, Some(Node::WireGuard(_))));
+        assert_eq!(account_protocol(&nodes, "awg"), Some("vless"));
+        assert_eq!(account_protocol(&nodes[1..], "vless"), None);
     }
 
     #[test]

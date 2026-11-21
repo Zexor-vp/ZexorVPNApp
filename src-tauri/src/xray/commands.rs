@@ -8,7 +8,7 @@ use zexor_vpn_core::probe;
 
 use super::{
     connect_auto, connect_to_node, disconnect_now, download_subscription, fetch_nodes,
-    resolve_xray_binary, ConnectError,
+    fetch_selected_nodes, resolve_xray_binary, ConnectError,
 };
 use crate::state::AppState;
 use zexor_vpn_core::sources::{self, Source, ACCOUNT_SOURCE};
@@ -99,13 +99,13 @@ pub async fn connect(
     source_id: Option<String>,
 ) -> Result<(), CommandError> {
     let source_id = source_id.unwrap_or_else(|| ACCOUNT_SOURCE.to_string());
-    let nodes = fetch_nodes(&state, Some(&source_id)).await?;
+    let nodes = fetch_selected_nodes(&state, Some(&source_id)).await?;
     let node = nodes
         .into_iter()
         .find(|n| n.remark() == node_remark)
         .ok_or_else(|| CommandError::Other(format!("узел \"{node_remark}\" не найден")))?;
 
-    // Смена узла «на лету»: сначала гасим прежний туннель, иначе порты заняты.
+    // Смена узла «на лету»: сначала гасим старый туннель, иначе порты заняты.
     disconnect_now(&state)?;
     connect_to_node(&app, &state, &node, &source_id).await?;
     Ok(())
@@ -285,7 +285,7 @@ pub fn remove_source(state: State<'_, AppState>, id: String) -> Result<(), Comma
 #[derive(Debug, Serialize)]
 pub struct NodePing {
     pub remark: String,
-    /// Задержка в мс; `None` — сервер не отвечает.
+    /// Задержка в мс; `None` — замер не получен.
     pub ms: Option<u32>,
 }
 
@@ -296,10 +296,10 @@ pub async fn ping_nodes(
     state: State<'_, AppState>,
     source_id: Option<String>,
 ) -> Result<Vec<NodePing>, CommandError> {
-    let nodes = fetch_nodes(&state, source_id.as_deref()).await?;
+    let nodes = fetch_selected_nodes(&state, source_id.as_deref()).await?;
     // У WireGuard и AmneziaWG (UDP) пинг приблизительный: меряем расстояние до хоста по TCP 443.
     let nodes: Vec<_> = nodes.into_iter().filter(|n| !n.is_balanced()).collect();
-    let pings = probe::tcp_ping_many(&nodes, Duration::from_secs(3)).await;
+    let mut pings = probe::tcp_ping_many(&nodes, Duration::from_secs(3)).await;
     // Замеры серверов нашей подписки уходят на сервер (анонимно, можно отключить в профиле).
     if source_id.is_none() || source_id.as_deref() == Some(ACCOUNT_SOURCE) {
         crate::sync::report_pings(
@@ -312,6 +312,11 @@ pub async fn ping_nodes(
                 .map(|(node, ms)| (node.remark().trim().to_string(), *ms))
                 .collect(),
         );
+    }
+    if pings.iter().any(Option::is_none) {
+        if let Ok(binary) = resolve_xray_binary(&app) {
+            probe::retry_vless_pings(&binary, &nodes, &mut pings).await;
+        }
     }
     Ok(nodes
         .iter()
@@ -339,7 +344,7 @@ pub async fn test_node(
     node_remark: String,
     source_id: Option<String>,
 ) -> Result<NodeTest, CommandError> {
-    let nodes = fetch_nodes(&state, source_id.as_deref()).await?;
+    let nodes = fetch_selected_nodes(&state, source_id.as_deref()).await?;
     let node = nodes
         .into_iter()
         .find(|n| n.remark() == node_remark)

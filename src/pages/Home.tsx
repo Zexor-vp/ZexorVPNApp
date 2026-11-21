@@ -405,7 +405,11 @@ export default function Home({ refreshKey, onOpenSubscription, onOpenRouting, gu
       }
       chosenRef.current = next;
       setSettings(await setAppProtocol(next));
+      ++pingSeq.current;
+      setPings({});
+      setPinging(false);
       await loadNodes(sourceId);
+      void refreshPings();
     } catch (err) {
       if (!reportAuthLoss(err)) setError(errorMessage(err));
     } finally {

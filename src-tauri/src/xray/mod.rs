@@ -273,6 +273,25 @@ pub async fn fetch_nodes(
     Ok(nodes)
 }
 
+fn select_protocol(state: &AppState, source_id: &str, mut nodes: Vec<Node>) -> Vec<Node> {
+    if source_id == ACCOUNT_SOURCE {
+        let settings = state.settings.lock().unwrap();
+        if let Some(protocol) = zexor_vpn_core::account_protocol(&nodes, &settings.protocol) {
+            nodes.retain(|node| node.protocol() == protocol);
+        }
+    }
+    nodes
+}
+
+pub async fn fetch_selected_nodes(
+    state: &AppState,
+    source_id: Option<&str>,
+) -> Result<Vec<Node>, ConnectError> {
+    let source_id = source_id.unwrap_or(ACCOUNT_SOURCE);
+    let nodes = fetch_nodes(state, Some(source_id)).await?;
+    Ok(select_protocol(state, source_id, nodes))
+}
+
 /// Путь к бандленному sidecar-бинарнику xray.
 ///
 /// Tauri кладёт `externalBin` рядом с исполняемым файлом приложения под именем без target triple
@@ -751,22 +770,7 @@ pub async fn connect_auto(
     nodes: &[Node],
     source_id: &str,
 ) -> Result<AutoOutcome, ConnectError> {
-    // На аккаунте работает только протокол, выбранный в приложении (если таких серверов нет — берём что есть).
-    let nodes: Vec<Node> = if source_id == ACCOUNT_SOURCE {
-        let chosen = state.settings.lock().unwrap().protocol.clone();
-        let matching: Vec<Node> = nodes
-            .iter()
-            .filter(|n| n.protocol() == chosen)
-            .cloned()
-            .collect();
-        if matching.iter().any(|n| !n.is_balanced()) {
-            matching
-        } else {
-            nodes.to_vec()
-        }
-    } else {
-        nodes.to_vec()
-    };
+    let nodes = select_protocol(state, source_id, nodes.to_vec());
     let nodes = nodes.as_slice();
     let servers = plain_servers(nodes);
 
@@ -908,6 +912,7 @@ pub async fn reconnect_if_connected(app: &AppHandle, state: &AppState) -> Result
             .await
             .map(|_| ());
     }
+    let nodes = select_protocol(state, &source_id, nodes);
     let Some(node) = nodes.into_iter().find(|n| n.remark() == remark) else {
         // Подписка успела смениться и узла больше нет — просто отключаемся,
         // это лучше, чем оставить туннель в рассинхроне с настройками.

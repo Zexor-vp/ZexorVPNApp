@@ -6,22 +6,13 @@ import { useT } from '../i18n';
 import { ServerName } from './Flag';
 import type { NodeSummary } from '../lib/commands';
 
-/** `undefined` — ещё меряем, `null` — не отвечает, число — миллисекунды. */
+/** `undefined` — ещё меряем, `null` — замера нет, число — миллисекунды. */
 export type PingValue = number | null | undefined;
 
-/** У UDP-протоколов (WireGuard, AmneziaWG) пинг приблизительный — расстояние до хоста; молчание хоста не значит,
- * что сервер лежит, поэтому вместо «недоступен» показываем прочерк. */
-export function NodeBadge({ node, ms }: { node: { protocol: string }; ms: PingValue }) {
-  if (ms === null && (node.protocol === 'awg' || node.protocol === 'wireguard')) {
-    return <span className="ping ping-pending">—</span>;
-  }
-  return <PingBadge ms={ms} />;
-}
-
-export function PingBadge({ ms }: { ms: PingValue }) {
+function PingBadge({ ms }: { ms: PingValue }) {
   const t = useT();
   if (ms === undefined) return <span className="ping ping-pending">…</span>;
-  if (ms === null) return <span className="ping ping-down">{t('недоступен')}</span>;
+  if (ms === null) return <span className="ping ping-pending">—</span>;
   const tone = ms < 150 ? 'ping-good' : ms < 300 ? 'ping-mid' : 'ping-bad';
   return <span className={`ping ${tone}`}>{t('{ms} мс', { ms })}</span>;
 }
@@ -87,7 +78,7 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
                 </strong>
                 <span className="muted">{node.protocol === 'wireguard' ? 'WireGuard' : node.is_reality ? 'VLESS · REALITY' : 'VLESS'}</span>
               </span>
-              <NodeBadge node={node} ms={pings[node.remark]} />
+              <PingBadge ms={pings[node.remark]} />
             </button>
           );
         })}
@@ -114,7 +105,7 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
               t('Нет серверов')
             ) : (
               <>
-                {current ? <ServerName remark={current.remark} /> : '—'} {current && <NodeBadge node={current} ms={pings[current.remark]} />}
+                {current ? <ServerName remark={current.remark} /> : '—'} {current && <PingBadge ms={pings[current.remark]} />}
               </>
             )}
           </span>
@@ -142,7 +133,7 @@ export default function ServerPicker({ nodes, selected, pings, pinging, disabled
                 </strong>
                 <span className="muted">{node.protocol === 'wireguard' ? 'WireGuard' : node.is_reality ? 'VLESS · REALITY' : 'VLESS'}</span>
               </span>
-              <NodeBadge node={node} ms={pings[node.remark]} />
+              <PingBadge ms={pings[node.remark]} />
             </button>
           ))}
 

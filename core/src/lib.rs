@@ -29,7 +29,7 @@ pub use xray::config_builder::{
     TunnelMode,
 };
 pub use xray::node::{
-    is_extra_balanced, parse_nodes, placeholder_reason, preferred_balanced, Node,
+    account_protocol, is_extra_balanced, parse_nodes, placeholder_reason, preferred_balanced, Node,
 };
 pub use xray::parser::{parse_subscription, parse_vless_uri, ParseError, Security, VlessNode};
 pub use xray::process::{XrayError, XrayProcess};
