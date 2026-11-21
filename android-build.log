@@ -1,0 +1,853 @@
+        Info Using installed NDK: /usr/local/lib/android/sdk/ndk/27.2.12479018
+        Info Looking up installed tauri packages to check mismatched versions...
+     Running beforeBuildCommand `npm run build`
+
+> zexor-vpn-desktop@0.3.44 build
+> tsc --noEmit && vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 87 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.54 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2mdist/[22m[2massets/[22m[32mlogo-BFHXz5bi.png   [39m[1m[2m 30.69 kB[22m[1m[22m
+[2mdist/[22m[2massets/[22m[35mindex-C_9wjUgL.css  [39m[1m[2m 23.42 kB[22m[1m[22m[2m │ gzip:   5.21 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex-CxdgF4Sk.js   [39m[1m[33m545.18 kB[39m[22m[2m │ gzip: 193.85 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 1.35s[39m
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m android_system_properties v0.1.6
+[1m[92m  Downloaded[0m alloc-stdlib v0.2.4
+[1m[92m  Downloaded[0m alloc-no-stdlib v2.0.4
+[1m[92m  Downloaded[0m async-broadcast v0.7.2
+[1m[92m  Downloaded[0m anyhow v1.0.104
+[1m[92m  Downloaded[0m bitflags v2.13.2
+[1m[92m  Downloaded[0m async-recursion v1.1.1
+[1m[92m  Downloaded[0m concurrent-queue v2.5.0
+[1m[92m  Downloaded[0m parking v2.2.1
+[1m[92m  Downloaded[0m async-signal v0.2.14
+[1m[92m  Downloaded[0m atk-sys v0.18.2
+[1m[92m  Downloaded[0m bit-set v0.8.0
+[1m[92m  Downloaded[0m blocking v1.7.0
+[1m[92m  Downloaded[0m async-executor v1.14.0
+[1m[92m  Downloaded[0m async-task v4.7.1
+[1m[92m  Downloaded[0m atk v0.18.2
+[1m[92m  Downloaded[0m bitflags v1.3.2
+[1m[92m  Downloaded[0m block-buffer v0.10.4
+[1m[92m  Downloaded[0m bs58 v0.5.1
+[1m[92m  Downloaded[0m byteorder v1.5.0
+[1m[92m  Downloaded[0m cfg_aliases v0.2.2
+[1m[92m  Downloaded[0m fnv v1.0.7
+[1m[92m  Downloaded[0m proc-macro-crate v3.5.0
+[1m[92m  Downloaded[0m cfg-if v1.0.4
+[1m[92m  Downloaded[0m cpufeatures v0.3.1
+[1m[92m  Downloaded[0m cssparser-macros v0.6.1
+[1m[92m  Downloaded[0m dtoa-short v0.3.5
+[1m[92m  Downloaded[0m phf_shared v0.13.1
+[1m[92m  Downloaded[0m proc-macro-error-attr v1.0.4
+[1m[92m  Downloaded[0m pango-sys v0.18.0
+[1m[92m  Downloaded[0m parking_lot v0.12.5
+[1m[92m  Downloaded[0m autocfg v1.5.1
+[1m[92m  Downloaded[0m bit-vec v0.8.0
+[1m[92m  Downloaded[0m cairo-sys-rs v0.18.2
+[1m[92m  Downloaded[0m cpufeatures v0.2.17
+[1m[92m  Downloaded[0m ctor-proc-macro v0.0.7
+[1m[92m  Downloaded[0m dirs-sys v0.5.0
+[1m[92m  Downloaded[0m dtor-proc-macro v0.0.6
+[1m[92m  Downloaded[0m dunce v1.0.5
+[1m[92m  Downloaded[0m enumflags2_derive v0.7.12
+[1m[92m  Downloaded[0m field-offset v0.3.6
+[1m[92m  Downloaded[0m futures-channel v0.3.34
+[1m[92m  Downloaded[0m percent-encoding v2.3.2
+[1m[92m  Downloaded[0m phf_generator v0.13.1
+[1m[92m  Downloaded[0m potential_utf v0.1.6
+[1m[92m  Downloaded[0m powerfmt v0.2.0
+[1m[92m  Downloaded[0m adler2 v2.0.1
+[1m[92m  Downloaded[0m cargo-platform v0.1.9
+[1m[92m  Downloaded[0m cesu8 v1.1.0
+[1m[92m  Downloaded[0m crypto-common v0.1.7
+[1m[92m  Downloaded[0m ctor v0.8.0
+[1m[92m  Downloaded[0m darling_macro v0.24.1
+[1m[92m  Downloaded[0m defmt-parser v1.0.0
+[1m[92m  Downloaded[0m dirs v6.0.0
+[1m[92m  Downloaded[0m dlopen2 v0.8.2
+[1m[92m  Downloaded[0m dlopen2_derive v0.4.3
+[1m[92m  Downloaded[0m dpi v0.1.2
+[1m[92m  Downloaded[0m dtoa v1.0.11
+[1m[92m  Downloaded[0m dtor v0.3.0
+[1m[92m  Downloaded[0m dyn-clone v1.0.20
+[1m[92m  Downloaded[0m embed-resource v3.0.11
+[1m[92m  Downloaded[0m endi v1.1.1
+[1m[92m  Downloaded[0m equivalent v1.0.2
+[1m[92m  Downloaded[0m erased-serde v0.4.10
+[1m[92m  Downloaded[0m errno v0.3.14
+[1m[92m  Downloaded[0m event-listener-strategy v0.5.4
+[1m[92m  Downloaded[0m fastrand v2.5.0
+[1m[92m  Downloaded[0m fdeflate v0.3.7
+[1m[92m  Downloaded[0m filetime v0.2.29
+[1m[92m  Downloaded[0m find-msvc-tools v0.1.12
+[1m[92m  Downloaded[0m foldhash v0.2.0
+[1m[92m  Downloaded[0m form_urlencoded v1.2.2
+[1m[92m  Downloaded[0m futures-io v0.3.34
+[1m[92m  Downloaded[0m futures-sink v0.3.34
+[1m[92m  Downloaded[0m num_enum v0.7.6
+[1m[92m  Downloaded[0m phf v0.13.1
+[1m[92m  Downloaded[0m phf_codegen v0.13.1
+[1m[92m  Downloaded[0m pin-project-lite v0.2.17
+[1m[92m  Downloaded[0m ppv-lite86 v0.2.21
+[1m[92m  Downloaded[0m precomputed-hash v0.1.1
+[1m[92m  Downloaded[0m proc-macro-error v1.0.4
+[1m[92m  Downloaded[0m serialize-to-javascript v0.1.2
+[1m[92m  Downloaded[0m async-channel v2.5.0
+[1m[92m  Downloaded[0m async-io v2.6.0
+[1m[92m  Downloaded[0m async-lock v3.4.2
+[1m[92m  Downloaded[0m async-process v2.5.0
+[1m[92m  Downloaded[0m async-trait v0.1.92
+[1m[92m  Downloaded[0m atomic-waker v1.1.2
+[1m[92m  Downloaded[0m base64 v0.22.1
+[1m[92m  Downloaded[0m base64 v0.23.1
+[1m[92m  Downloaded[0m bytes v1.12.1
+[1m[92m  Downloaded[0m cairo-rs v0.18.5
+[1m[92m  Downloaded[0m camino v1.2.5
+[1m[92m  Downloaded[0m cargo_metadata v0.19.2
+[1m[92m  Downloaded[0m cargo_toml v0.22.3
+[1m[92m  Downloaded[0m cfb v0.7.3
+[1m[92m  Downloaded[0m cfg-expr v0.15.8
+[1m[92m  Downloaded[0m chacha20 v0.10.2
+[1m[92m  Downloaded[0m cookie v0.18.2
+[1m[92m  Downloaded[0m crc32fast v1.5.2
+[1m[92m  Downloaded[0m crossbeam-utils v0.8.23
+[1m[92m  Downloaded[0m cssparser v0.36.0
+[1m[92m  Downloaded[0m darling v0.24.1
+[1m[92m  Downloaded[0m darling_core v0.24.1
+[1m[92m  Downloaded[0m defmt v1.1.1
+[1m[92m  Downloaded[0m defmt-macros v1.1.1
+[1m[92m  Downloaded[0m deranged v0.5.8
+[1m[92m  Downloaded[0m derive_more v2.1.1
+[1m[92m  Downloaded[0m digest v0.10.7
+[1m[92m  Downloaded[0m displaydoc v0.2.7
+[1m[92m  Downloaded[0m dom_query v0.27.0
+[1m[92m  Downloaded[0m enumflags2 v0.7.12
+[1m[92m  Downloaded[0m event-listener v5.4.2
+[1m[92m  Downloaded[0m flate2 v1.1.10
+[1m[92m  Downloaded[0m open v5.4.4
+[1m[92m  Downloaded[0m parking_lot_core v0.9.12
+[1m[92m  Downloaded[0m phf_macros v0.13.1
+[1m[92m  Downloaded[0m plist v1.10.1
+[1m[92m  Downloaded[0m png v0.17.16
+[1m[92m  Downloaded[0m proc-macro2 v1.0.107
+[1m[92m  Downloaded[0m quinn v0.11.11
+[1m[92m  Downloaded[0m quinn-udp v0.5.15
+[1m[92m  Downloaded[0m quote v1.0.47
+[1m[92m  Downloaded[0m ref-cast-impl v1.0.27
+[1m[92m  Downloaded[0m rustc-hash v2.1.3
+[1m[92m  Downloaded[0m rustc_version v0.4.1
+[1m[92m  Downloaded[0m rustls-platform-verifier-android v0.1.1
+[1m[92m  Downloaded[0m same-file v1.0.6
+[1m[92m  Downloaded[0m scopeguard v1.2.0
+[1m[92m  Downloaded[0m serde_spanned v0.6.9
+[1m[92m  Downloaded[0m serde_spanned v1.1.1
+[1m[92m  Downloaded[0m serde_urlencoded v0.7.1
+[1m[92m  Downloaded[0m siphasher v1.0.3
+[1m[92m  Downloaded[0m stable_deref_trait v1.2.1
+[1m[92m  Downloaded[0m string_cache_codegen v0.6.1
+[1m[92m  Downloaded[0m strsim v0.11.1
+[1m[92m  Downloaded[0m zerocopy v0.8.57
+[1m[92m  Downloaded[0m zerotrie v0.2.5
+[1m[92m  Downloaded[0m zlib-rs v0.6.7
+[1m[92m  Downloaded[0m brotli v8.0.4
+[1m[92m  Downloaded[0m brotli-decompressor v5.0.3
+[1m[92m  Downloaded[0m cc v1.4.6
+[1m[92m  Downloaded[0m chrono v0.4.45
+[1m[92m  Downloaded[0m combine v4.6.8
+[1m[92m  Downloaded[0m crossbeam-channel v0.5.17
+[1m[92m  Downloaded[0m dbus v0.9.12
+[1m[92m  Downloaded[0m derive_more-impl v2.1.1
+[1m[92m  Downloaded[0m gdkx11-sys v0.18.2
+[1m[92m  Downloaded[0m generic-array v0.14.7
+[1m[92m  Downloaded[0m getrandom v0.2.17
+[1m[92m  Downloaded[0m getrandom v0.3.4
+[1m[92m  Downloaded[0m gtk-sys v0.18.2
+[1m[92m  Downloaded[0m gtk3-macros v0.18.2
+[1m[92m  Downloaded[0m hashbrown v0.12.3
+[1m[92m  Downloaded[0m hashbrown v0.17.1
+[1m[92m  Downloaded[0m heck v0.4.1
+[1m[92m  Downloaded[0m heck v0.5.0
+[1m[92m  Downloaded[0m hex v0.4.3
+[1m[92m  Downloaded[0m html5ever v0.38.0
+[1m[92m  Downloaded[0m jni-sys-macros v0.4.1
+[1m[92m  Downloaded[0m json-patch v3.0.1
+[1m[92m  Downloaded[0m jsonptr v0.6.3
+[1m[92m  Downloaded[0m keyboard-types v0.7.0
+[1m[92m  Downloaded[0m muda v0.19.3
+[1m[92m  Downloaded[0m new_debug_unreachable v1.0.6
+[1m[92m  Downloaded[0m nu-ansi-term v0.50.3
+[1m[92m  Downloaded[0m num-conv v0.2.2
+[1m[92m  Downloaded[0m num-traits v0.2.19
+[1m[92m  Downloaded[0m once_cell v1.21.4
+[1m[92m  Downloaded[0m openssl-probe v0.2.1
+[1m[92m  Downloaded[0m option-ext v0.2.0
+[1m[92m  Downloaded[0m pkg-config v0.3.34
+[1m[92m  Downloaded[0m proc-macro-crate v1.3.1
+[1m[92m  Downloaded[0m rand_chacha v0.9.0
+[1m[92m  Downloaded[0m rand_core v0.9.5
+[1m[92m  Downloaded[0m rand_core v0.10.1
+[1m[92m  Downloaded[0m rand_pcg v0.10.2
+[1m[92m  Downloaded[0m raw-window-handle v0.6.2
+[1m[92m  Downloaded[0m ref-cast v1.0.27
+[1m[92m  Downloaded[0m rustls-native-certs v0.8.4
+[1m[92m  Downloaded[0m rustversion v1.0.23
+[1m[92m  Downloaded[0m schemars_derive v0.8.22
+[1m[92m  Downloaded[0m serde-untagged v0.1.9
+[1m[92m  Downloaded[0m serde_repr v0.1.21
+[1m[92m  Downloaded[0m serialize-to-javascript-impl v0.1.2
+[1m[92m  Downloaded[0m servo_arc v0.4.3
+[1m[92m  Downloaded[0m sha2 v0.10.9
+[1m[92m  Downloaded[0m shlex v2.0.1
+[1m[92m  Downloaded[0m signal-hook-registry v1.4.8
+[1m[92m  Downloaded[0m simd-adler32 v0.3.10
+[1m[92m  Downloaded[0m simdutf8 v0.1.5
+[1m[92m  Downloaded[0m slab v0.4.12
+[1m[92m  Downloaded[0m smallvec v1.16.1
+[1m[92m  Downloaded[0m soup3 v0.5.0
+[1m[92m  Downloaded[0m soup3-sys v0.5.0
+[1m[92m  Downloaded[0m string_cache v0.9.0
+[1m[92m  Downloaded[0m subtle v2.6.1
+[1m[92m  Downloaded[0m gdk-pixbuf v0.18.5
+[1m[92m  Downloaded[0m gtk v0.18.2
+[1m[92m  Downloaded[0m ipnet v2.12.2
+[1m[92m  Downloaded[0m lock_api v0.4.14
+[1m[92m  Downloaded[0m minisign-verify v0.2.5
+[1m[92m  Downloaded[0m ndk v0.9.0
+[1m[92m  Downloaded[0m ndk-sys v0.6.0+11769913
+[1m[92m  Downloaded[0m notify-rust v4.18.1
+[1m[92m  Downloaded[0m num_enum_derive v0.7.6
+[1m[92m  Downloaded[0m ordered-stream v0.2.0
+[1m[92m  Downloaded[0m piper v0.2.5
+[1m[92m  Downloaded[0m polling v3.11.0
+[1m[92m  Downloaded[0m proc-macro-crate v2.0.2
+[1m[92m  Downloaded[0m rand v0.10.2
+[1m[92m  Downloaded[0m rfd v0.16.0
+[1m[92m  Downloaded[0m rustls-pki-types v1.15.1
+[1m[92m  Downloaded[0m rustls-platform-verifier v0.7.0
+[1m[92m  Downloaded[0m rustls-webpki v0.103.15
+[1m[92m  Downloaded[0m ryu v1.0.23
+[1m[92m  Downloaded[0m schemars v0.8.22
+[1m[92m  Downloaded[0m schemars v0.9.0
+[1m[92m  Downloaded[0m schemars v1.2.2
+[1m[92m  Downloaded[0m selectors v0.36.1
+[1m[92m  Downloaded[0m semver v1.0.28
+[1m[92m  Downloaded[0m serde v1.0.229
+[1m[92m  Downloaded[0m serde_core v1.0.229
+[1m[92m  Downloaded[0m serde_derive v1.0.229
+[1m[92m  Downloaded[0m serde_derive_internals v0.29.1
+[1m[92m  Downloaded[0m serde_with_macros v3.23.0
+[1m[92m  Downloaded[0m sharded-slab v0.1.7
+[1m[92m  Downloaded[0m socket2 v0.6.5
+[1m[92m  Downloaded[0m tinyvec_macros v0.1.1
+[1m[92m  Downloaded[0m tokio-macros v2.7.2
+[1m[92m  Downloaded[0m tokio-rustls v0.26.5
+[1m[92m  Downloaded[0m tokio-util v0.7.19
+[1m[92m  Downloaded[0m toml v0.8.2
+[1m[92m  Downloaded[0m toml v0.9.12+spec-1.1.0
+[1m[92m  Downloaded[0m toml v1.1.6+spec-1.1.0
+[1m[92m  Downloaded[0m toml_datetime v0.6.3
+[1m[92m  Downloaded[0m toml_datetime v1.1.1+spec-1.1.0
+[1m[92m  Downloaded[0m toml_edit v0.19.15
+[1m[92m  Downloaded[0m toml_parser v1.1.3+spec-1.1.0
+[1m[92m  Downloaded[0m toml_writer v1.1.2+spec-1.1.0
+[1m[92m  Downloaded[0m tower-service v0.3.3
+[1m[92m  Downloaded[0m tracing-log v0.2.0
+[1m[92m  Downloaded[0m tray-icon v0.24.2
+[1m[92m  Downloaded[0m unic-char-property v0.9.0
+[1m[92m  Downloaded[0m unic-char-range v0.9.0
+[1m[92m  Downloaded[0m unic-common v0.9.0
+[1m[92m  Downloaded[0m unic-ucd-ident v0.9.0
+[1m[92m  Downloaded[0m unic-ucd-version v0.9.0
+[1m[92m  Downloaded[0m unicode-ident v1.0.24
+[1m[92m  Downloaded[0m futures-core v0.3.34
+[1m[92m  Downloaded[0m futures-lite v2.6.1
+[1m[92m  Downloaded[0m futures-macro v0.3.34
+[1m[92m  Downloaded[0m gdk-pixbuf-sys v0.18.0
+[1m[92m  Downloaded[0m icu_locale_core v2.3.0
+[1m[92m  Downloaded[0m png v0.18.1
+[1m[92m  Downloaded[0m quick-xml v0.42.0
+[1m[92m  Downloaded[0m rand v0.9.5
+[1m[92m  Downloaded[0m regex v1.13.1
+[1m[92m  Downloaded[0m reqwest v0.12.28
+[1m[92m  Downloaded[0m serde_json v1.0.151
+[1m[92m  Downloaded[0m tokio v1.53.1
+[1m[92m  Downloaded[0m toml_datetime v0.7.5+spec-1.1.0
+[1m[92m  Downloaded[0m toml_edit v0.20.2
+[1m[92m  Downloaded[0m toml_edit v0.25.15+spec-1.1.0
+[1m[92m  Downloaded[0m tower v0.5.3
+[1m[92m  Downloaded[0m tower-http v0.6.11
+[1m[92m  Downloaded[0m tower-layer v0.3.3
+[1m[92m  Downloaded[0m tracing-attributes v0.1.31
+[1m[92m  Downloaded[0m tracing-core v0.1.36
+[1m[92m  Downloaded[0m tracing-subscriber v0.3.23
+[1m[92m  Downloaded[0m try-lock v0.2.5
+[1m[92m  Downloaded[0m typeid v1.0.3
+[1m[92m  Downloaded[0m unicode-segmentation v1.13.3
+[1m[92m  Downloaded[0m zerofrom v0.1.8
+[1m[92m  Downloaded[0m zmij v1.0.23
+[1m[92m  Downloaded[0m futures-executor v0.3.34
+[1m[92m  Downloaded[0m futures-task v0.3.34
+[1m[92m  Downloaded[0m gdkwayland-sys v0.18.2
+[1m[92m  Downloaded[0m gdkx11 v0.18.2
+[1m[92m  Downloaded[0m glob v0.3.4
+[1m[92m  Downloaded[0m gobject-sys v0.18.0
+[1m[92m  Downloaded[0m http-body v1.1.0
+[1m[92m  Downloaded[0m http-body-util v0.1.5
+[1m[92m  Downloaded[0m hyper-rustls v0.27.9
+[1m[92m  Downloaded[0m iana-time-zone v0.1.65
+[1m[92m  Downloaded[0m ident_case v1.0.1
+[1m[92m  Downloaded[0m idna_adapter v1.2.2
+[1m[92m  Downloaded[0m pango v0.18.3
+[1m[92m  Downloaded[0m quinn-proto v0.11.17
+[1m[92m  Downloaded[0m reqwest v0.13.5
+[1m[92m  Downloaded[0m serde_with v3.23.0
+[1m[92m  Downloaded[0m typenum v1.20.1
+[1m[92m  Downloaded[0m gdk v0.18.2
+[1m[92m  Downloaded[0m gdk-sys v0.18.2
+[1m[92m  Downloaded[0m getrandom v0.4.3
+[1m[92m  Downloaded[0m gio-sys v0.18.1
+[1m[92m  Downloaded[0m glib v0.18.5
+[1m[92m  Downloaded[0m glib-macros v0.18.5
+[1m[92m  Downloaded[0m glib-sys v0.18.1
+[1m[92m  Downloaded[0m httparse v1.10.1
+[1m[92m  Downloaded[0m hyper-util v0.1.20
+[1m[92m  Downloaded[0m ico v0.5.0
+[1m[92m  Downloaded[0m icu_collections v2.3.0
+[1m[92m  Downloaded[0m icu_normalizer_data v2.3.0
+[1m[92m  Downloaded[0m icu_provider v2.3.1
+[1m[92m  Downloaded[0m indexmap v1.9.3
+[1m[92m  Downloaded[0m infer v0.19.0
+[1m[92m  Downloaded[0m is-docker v0.2.0
+[1m[92m  Downloaded[0m jni-sys v0.3.1
+[1m[92m  Downloaded[0m libappindicator-sys v0.9.0
+[1m[92m  Downloaded[0m regex-syntax v0.8.11
+[1m[92m  Downloaded[0m rustix v1.1.4
+[1m[92m  Downloaded[0m rustls v0.23.44
+[1m[92m  Downloaded[0m simd_cesu8 v1.2.0
+[1m[92m  Downloaded[0m syn v1.0.109
+[1m[92m  Downloaded[0m syn v2.0.119
+[1m[92m  Downloaded[0m syn v3.0.5
+[1m[92m  Downloaded[0m zerovec v0.11.8
+[1m[92m  Downloaded[0m futures-util v0.3.34
+[1m[92m  Downloaded[0m http v1.5.0
+[1m[92m  Downloaded[0m icu_properties v2.3.0
+[1m[92m  Downloaded[0m indexmap v2.14.2
+[1m[92m  Downloaded[0m is-wsl v0.4.0
+[1m[92m  Downloaded[0m itoa v1.0.18
+[1m[92m  Downloaded[0m javascriptcore-rs v1.1.2
+[1m[92m  Downloaded[0m javascriptcore-rs-sys v1.1.1
+[1m[92m  Downloaded[0m jni-macros v0.22.4
+[1m[92m  Downloaded[0m lazy_static v1.5.0
+[1m[92m  Downloaded[0m libappindicator v0.9.0
+[1m[92m  Downloaded[0m regex-automata v0.4.18
+[1m[92m  Downloaded[0m sync_wrapper v1.0.2
+[1m[92m  Downloaded[0m system-deps v6.2.2
+[1m[92m  Downloaded[0m tao-macros v0.1.4
+[1m[92m  Downloaded[0m tar v0.4.46
+[1m[92m  Downloaded[0m tauri-build v2.6.3
+[1m[92m  Downloaded[0m tauri-plugin-dialog v2.7.3
+[1m[92m  Downloaded[0m tempfile v3.27.0
+[1m[92m  Downloaded[0m tendril v0.5.1
+[1m[92m  Downloaded[0m thiserror v1.0.69
+[1m[92m  Downloaded[0m thiserror v2.0.20
+[1m[92m  Downloaded[0m gio v0.18.4
+[1m[92m  Downloaded[0m hyper v1.11.1
+[1m[92m  Downloaded[0m icu_properties_data v2.3.0
+[1m[92m  Downloaded[0m ring v0.17.14
+[1m[92m  Downloaded[0m synstructure v0.13.2
+[1m[92m  Downloaded[0m tao v0.35.3
+[1m[92m  Downloaded[0m target-lexicon v0.12.16
+[1m[92m  Downloaded[0m tauri-macros v2.6.3
+[1m[92m  Downloaded[0m tauri-winres v0.3.6
+[1m[92m  Downloaded[0m idna v1.1.0
+[1m[92m  Downloaded[0m jiff-core v0.1.1
+[1m[92m  Downloaded[0m jni v0.21.1
+[1m[92m  Downloaded[0m jni v0.22.4
+[1m[92m  Downloaded[0m tauri v2.11.5
+[1m[92m  Downloaded[0m tauri-codegen v2.6.3
+[1m[92m  Downloaded[0m tauri-plugin v2.6.3
+[1m[92m  Downloaded[0m tauri-plugin-fs v2.5.2
+[1m[92m  Downloaded[0m tauri-plugin-notification v2.4.0
+[1m[92m  Downloaded[0m tauri-plugin-opener v2.5.5
+[1m[92m  Downloaded[0m tauri-plugin-process v2.3.1
+[1m[92m  Downloaded[0m tauri-plugin-single-instance v2.4.5
+[1m[92m  Downloaded[0m tauri-plugin-updater v2.11.0
+[1m[92m  Downloaded[0m tauri-runtime v2.11.3
+[1m[92m  Downloaded[0m tauri-runtime-wry v2.11.4
+[1m[92m  Downloaded[0m tauri-utils v2.9.3
+[1m[92m  Downloaded[0m thiserror-impl v1.0.69
+[1m[92m  Downloaded[0m thiserror-impl v2.0.20
+[1m[92m  Downloaded[0m thread_local v1.1.10
+[1m[92m  Downloaded[0m time-core v0.1.9
+[1m[92m  Downloaded[0m time-macros v0.2.32
+[1m[92m  Downloaded[0m tinystr v0.8.4
+[1m[92m  Downloaded[0m tracing v0.1.44
+[1m[92m  Downloaded[0m time v0.3.55
+[1m[92m  Downloaded[0m tinyvec v1.13.2
+[1m[92m  Downloaded[0m untrusted v0.9.0
+[1m[92m  Downloaded[0m url v2.5.8
+[1m[92m  Downloaded[0m version-compare v0.2.1
+[1m[92m  Downloaded[0m version_check v0.9.5
+[1m[92m  Downloaded[0m walkdir v2.5.0
+[1m[92m  Downloaded[0m want v0.3.1
+[1m[92m  Downloaded[0m icu_normalizer v2.3.0
+[1m[92m  Downloaded[0m urlpattern v0.3.0
+[1m[92m  Downloaded[0m utf8_iter v1.0.4
+[1m[92m  Downloaded[0m uuid v1.26.1
+[1m[92m  Downloaded[0m web_atoms v0.2.6
+[1m[92m  Downloaded[0m webkit2gtk v2.0.2
+[1m[92m  Downloaded[0m writeable v0.6.4
+[1m[92m  Downloaded[0m zbus_names v4.3.4
+[1m[92m  Downloaded[0m zcheapstr v1.1.0
+[1m[92m  Downloaded[0m jiff v0.2.37
+[1m[92m  Downloaded[0m jni-sys v0.4.1
+[1m[92m  Downloaded[0m libc v0.2.189
+[1m[92m  Downloaded[0m webkit2gtk-sys v2.0.2
+[1m[92m  Downloaded[0m wry v0.55.1
+[1m[92m  Downloaded[0m xattr v1.6.1
+[1m[92m  Downloaded[0m yoke v0.8.3
+[1m[92m  Downloaded[0m yoke-derive v0.8.2
+[1m[92m  Downloaded[0m zerofrom-derive v0.1.7
+[1m[92m  Downloaded[0m zeroize v1.9.0
+[1m[92m  Downloaded[0m zerovec-derive v0.11.6
+[1m[92m  Downloaded[0m zvariant v5.15.0
+[1m[92m  Downloaded[0m zvariant_derive v5.15.0
+[1m[92m  Downloaded[0m zvariant_utils v4.2.0
+[1m[92m  Downloaded[0m zbus v5.19.0
+[1m[92m  Downloaded[0m zbus_macros v5.19.0
+[1m[92m  Downloaded[0m mime v0.3.17
+[1m[92m  Downloaded[0m webpki-roots v1.0.9
+[1m[92m  Downloaded[0m winnow v0.5.40
+[1m[92m  Downloaded[0m x11 v2.21.0
+[1m[92m  Downloaded[0m aho-corasick v1.1.5
+[1m[92m  Downloaded[0m litemap v0.8.3
+[1m[92m  Downloaded[0m lru-slab v0.1.2
+[1m[92m  Downloaded[0m markup5ever v0.38.0
+[1m[92m  Downloaded[0m matchers v0.2.0
+[1m[92m  Downloaded[0m memchr v2.8.3
+[1m[92m  Downloaded[0m memoffset v0.9.1
+[1m[92m  Downloaded[0m winnow v1.0.4
+[1m[92m  Downloaded[0m x11-dl v2.21.0
+[1m[92m  Downloaded[0m mio v1.2.3
+[1m[92m  Downloaded[0m winnow v0.7.15
+[1m[92m  Downloaded[0m libloading v0.7.4
+[1m[92m  Downloaded[0m log v0.4.34
+[1m[92m  Downloaded[0m miniz_oxide v0.9.1
+[1m[92m  Downloaded[0m miniz_oxide v0.8.9
+[1m[92m  Downloaded[0m libdbus-sys v0.2.7
+[1m[92m  Downloaded[0m linux-raw-sys v0.12.1
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[92m   Compiling[0m unicode-ident v1.0.24
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m   Compiling[0m libc v0.2.189
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m siphasher v1.0.3
+[1m[92m   Compiling[0m fastrand v2.5.0
+[1m[92m   Compiling[0m phf_shared v0.13.1
+[1m[92m   Compiling[0m phf_generator v0.13.1
+[1m[92m   Compiling[0m icu_properties_data v2.3.0
+[1m[92m   Compiling[0m icu_normalizer_data v2.3.0
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m syn v2.0.119
+[1m[92m   Compiling[0m syn v3.0.5
+[1m[92m   Compiling[0m phf_codegen v0.13.1
+[1m[92m   Compiling[0m stable_deref_trait v1.2.1
+[1m[92m   Compiling[0m parking_lot_core v0.9.12
+[1m[92m   Compiling[0m cfg-if v1.0.4
+[1m[92m   Compiling[0m smallvec v1.16.1
+[1m[92m   Compiling[0m synstructure v0.13.2
+[1m[92m   Compiling[0m winnow v1.0.4
+[1m[92m   Compiling[0m string_cache_codegen v0.6.1
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m zerovec-derive v0.11.6
+[1m[92m   Compiling[0m zerofrom-derive v0.1.7
+[1m[92m   Compiling[0m yoke-derive v0.8.2
+[1m[92m   Compiling[0m displaydoc v0.2.7
+[1m[92m   Compiling[0m phf_macros v0.13.1
+[1m[92m   Compiling[0m zerofrom v0.1.8
+[1m[92m   Compiling[0m toml_parser v1.1.3+spec-1.1.0
+[1m[92m   Compiling[0m yoke v0.8.3
+[1m[92m   Compiling[0m thiserror v1.0.69
+[1m[92m   Compiling[0m memchr v2.8.3
+[1m[92m   Compiling[0m zerovec v0.11.8
+[1m[92m   Compiling[0m web_atoms v0.2.6
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m thiserror-impl v1.0.69
+[1m[92m   Compiling[0m toml_datetime v1.1.1+spec-1.1.0
+[1m[92m   Compiling[0m typeid v1.0.3
+[1m[92m   Compiling[0m equivalent v1.0.2
+[1m[92m   Compiling[0m hashbrown v0.17.1
+[1m[92m   Compiling[0m num-conv v0.2.2
+[1m[92m   Compiling[0m time-core v0.1.9
+[1m[92m   Compiling[0m thiserror v2.0.20
+[1m[92m   Compiling[0m indexmap v2.14.2
+[1m[92m   Compiling[0m tinystr v0.8.4
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m   Compiling[0m writeable v0.6.4
+[1m[92m   Compiling[0m ident_case v1.0.1
+[1m[92m   Compiling[0m itoa v1.0.18
+[1m[92m   Compiling[0m litemap v0.8.3
+[1m[92m   Compiling[0m erased-serde v0.4.10
+[1m[92m   Compiling[0m icu_locale_core v2.3.0
+[1m[92m   Compiling[0m darling_core v0.24.1
+[1m[92m   Compiling[0m potential_utf v0.1.6
+[1m[92m   Compiling[0m zerotrie v0.2.5
+[1m[92m   Compiling[0m cssparser-macros v0.6.1
+[1m[92m   Compiling[0m derive_more-impl v2.1.1
+[1m[92m   Compiling[0m thiserror-impl v2.0.20
+[1m[92m   Compiling[0m selectors v0.36.1
+[1m[92m   Compiling[0m utf8_iter v1.0.4
+[1m[92m   Compiling[0m icu_collections v2.3.0
+[1m[92m   Compiling[0m icu_provider v2.3.1
+[1m[92m   Compiling[0m anyhow v1.0.104
+[1m[92m   Compiling[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m new_debug_unreachable v1.0.6
+[1m[92m   Compiling[0m lock_api v0.4.14
+[1m[92m   Compiling[0m phf v0.13.1
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m   Compiling[0m precomputed-hash v0.1.1
+[1m[92m   Compiling[0m serde_json v1.0.151
+[1m[92m   Compiling[0m parking_lot v0.12.5
+[1m[92m   Compiling[0m icu_properties v2.3.0
+[1m[92m   Compiling[0m icu_normalizer v2.3.0
+[1m[92m   Compiling[0m serde_spanned v1.1.1
+[1m[92m   Compiling[0m ctor-proc-macro v0.0.7
+[1m[92m   Compiling[0m toml_writer v1.1.2+spec-1.1.0
+[1m[92m   Compiling[0m darling_macro v0.24.1
+[1m[92m   Compiling[0m string_cache v0.9.0
+[1m[92m   Compiling[0m darling v0.24.1
+[1m[92m   Compiling[0m serde_with_macros v3.23.0
+[1m[92m   Compiling[0m idna_adapter v1.2.2
+[1m[92m   Compiling[0m semver v1.0.28
+[1m[92m   Compiling[0m autocfg v1.5.1
+[1m[92m   Compiling[0m log v0.4.34
+[1m[92m   Compiling[0m percent-encoding v2.3.2
+[1m[92m   Compiling[0m dtoa v1.0.11
+[1m[92m   Compiling[0m idna v1.1.0
+[1m[92m   Compiling[0m indexmap v1.9.3
+[1m[92m   Compiling[0m dtoa-short v0.3.5
+[1m[92m   Compiling[0m form_urlencoded v1.2.2
+[1m[92m   Compiling[0m uuid v1.26.1
+[1m[92m   Compiling[0m tendril v0.5.1
+[1m[92m   Compiling[0m aho-corasick v1.1.5
+[1m[92m   Compiling[0m alloc-no-stdlib v2.0.4
+[1m[92m   Compiling[0m byteorder v1.5.0
+[1m[92m   Compiling[0m find-msvc-tools v0.1.12
+[1m[92m   Compiling[0m unic-char-range v0.9.0
+[1m[92m   Compiling[0m regex-syntax v0.8.11
+[1m[92m   Compiling[0m camino v1.2.5
+[1m[92m   Compiling[0m unic-common v0.9.0
+[1m[92m   Compiling[0m shlex v2.0.1
+[1m[92m   Compiling[0m unic-ucd-version v0.9.0
+[1m[92m   Compiling[0m cc v1.4.6
+[1m[92m   Compiling[0m unic-char-property v0.9.0
+[1m[92m   Compiling[0m markup5ever v0.38.0
+[1m[92m   Compiling[0m alloc-stdlib v0.2.4
+[1m[92m   Compiling[0m url v2.5.8
+[1m[92m   Compiling[0m cssparser v0.36.0
+[1m[92m   Compiling[0m toml v1.1.6+spec-1.1.0
+[1m[92m   Compiling[0m regex-automata v0.4.18
+[1m[92m   Compiling[0m derive_more v2.1.1
+[1m[92m   Compiling[0m serde_derive_internals v0.29.1
+[1m[92m   Compiling[0m servo_arc v0.4.3
+[1m[92m   Compiling[0m fnv v1.0.7
+[1m[92m   Compiling[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m bitflags v2.13.2
+[1m[92m   Compiling[0m hashbrown v0.12.3
+[1m[92m   Compiling[0m deranged v0.5.8
+[1m[92m   Compiling[0m schemars v0.8.22
+[1m[92m   Compiling[0m powerfmt v0.2.0
+[1m[92m   Compiling[0m schemars_derive v0.8.22
+[1m[92m   Compiling[0m time v0.3.55
+[1m[92m   Compiling[0m regex v1.13.1
+[1m[92m   Compiling[0m bit-set v0.8.0
+[1m[92m   Compiling[0m cfb v0.7.3
+[1m[92m   Compiling[0m brotli-decompressor v5.0.3
+[1m[92m   Compiling[0m html5ever v0.38.0
+[1m[92m   Compiling[0m unic-ucd-ident v0.9.0
+[1m[92m   Compiling[0m jsonptr v0.6.3
+[1m[92m   Compiling[0m cargo-platform v0.1.9
+[1m[92m   Compiling[0m quick-xml v0.42.0
+[1m[92m   Compiling[0m dunce v1.0.5
+[1m[92m   Compiling[0m foldhash v0.2.0
+[1m[92m   Compiling[0m same-file v1.0.6
+[1m[92m   Compiling[0m dyn-clone v1.0.20
+[1m[92m   Compiling[0m base64 v0.23.1
+[1m[92m   Compiling[0m bytes v1.12.1
+[1m[92m   Compiling[0m http v1.5.0
+[1m[92m   Compiling[0m plist v1.10.1
+[1m[92m   Compiling[0m walkdir v2.5.0
+[1m[92m   Compiling[0m dom_query v0.27.0
+[1m[92m   Compiling[0m cargo_metadata v0.19.2
+[1m[92m   Compiling[0m json-patch v3.0.1
+[1m[92m   Compiling[0m brotli v8.0.4
+[1m[92m   Compiling[0m urlpattern v0.3.0
+[1m[92m   Compiling[0m serde-untagged v0.1.9
+[1m[92m   Compiling[0m infer v0.19.0
+[1m[92m   Compiling[0m serde_with v3.23.0
+[1m[92m   Compiling[0m ctor v0.8.0
+[1m[92m   Compiling[0m version_check v0.9.5
+[1m[92m   Compiling[0m glob v0.3.4
+[1m[92m   Compiling[0m once_cell v1.21.4
+[1m[92m   Compiling[0m generic-array v0.14.7
+[1m[92m   Compiling[0m tauri-utils v2.9.3
+[1m[92m   Compiling[0m pin-project-lite v0.2.17
+[1m[92m   Compiling[0m rustc_version v0.4.1
+[1m[92m   Compiling[0m toml_datetime v0.7.5+spec-1.1.0
+[1m[92m   Compiling[0m option-ext v0.2.0
+[1m[92m   Compiling[0m futures-core v0.3.34
+[1m[92m   Compiling[0m winnow v0.7.15
+[1m[92m   Compiling[0m dirs-sys v0.5.0
+[1m[92m   Compiling[0m embed-resource v3.0.11
+[1m[92m   Compiling[0m toml v0.9.12+spec-1.1.0
+[1m[92m   Compiling[0m heck v0.5.0
+[1m[92m   Compiling[0m cargo_toml v0.22.3
+[1m[92m   Compiling[0m tauri-winres v0.3.6
+[1m[92m   Compiling[0m dirs v6.0.0
+[1m[92m   Compiling[0m tokio-macros v2.7.2
+[1m[92m   Compiling[0m mio v1.2.3
+[1m[92m   Compiling[0m socket2 v0.6.5
+[1m[92m   Compiling[0m tokio v1.53.1
+[1m[92m   Compiling[0m tauri-plugin v2.6.3
+[1m[92m   Compiling[0m tauri-build v2.6.3
+[1m[92m   Compiling[0m jni-sys-macros v0.4.1
+[1m[92m   Compiling[0m jni-sys v0.3.1
+[1m[92m   Compiling[0m jni-sys v0.4.1
+[1m[92m   Compiling[0m http-body v1.1.0
+[1m[92m   Compiling[0m tracing-core v0.1.36
+[1m[92m   Compiling[0m tauri v2.11.5
+[1m[92m   Compiling[0m httparse v1.10.1
+[1m[92m   Compiling[0m futures-task v0.3.34
+[1m[92m   Compiling[0m slab v0.4.12
+[1m[92m   Compiling[0m simd-adler32 v0.3.10
+[1m[92m   Compiling[0m futures-util v0.3.34
+[1m[92m   Compiling[0m toml_edit v0.25.15+spec-1.1.0
+[1m[92m   Compiling[0m time-macros v0.2.32
+[1m[92m   Compiling[0m tracing-attributes v0.1.31
+[1m[92m   Compiling[0m rustversion v1.0.23
+[1m[92m   Compiling[0m base64 v0.22.1
+[1m[92m   Compiling[0m typenum v1.20.1
+[1m[92m   Compiling[0m tower-service v0.3.3
+[1m[92m   Compiling[0m adler2 v2.0.1
+[1m[92m   Compiling[0m crc32fast v1.5.2
+[1m[92m   Compiling[0m try-lock v0.2.5
+[1m[92m   Compiling[0m want v0.3.1
+[1m[92m   Compiling[0m tracing v0.1.44
+[1m[92m   Compiling[0m proc-macro-crate v3.5.0
+[1m[92m   Compiling[0m futures-channel v0.3.34
+[1m[92m   Compiling[0m crossbeam-utils v0.8.23
+[1m[92m   Compiling[0m atomic-waker v1.1.2
+[1m[92m   Compiling[0m hyper v1.11.1
+[1m[92m   Compiling[0m num_enum_derive v0.7.6
+[1m[92m   Compiling[0m miniz_oxide v0.9.1
+[1m[92m   Compiling[0m sync_wrapper v1.0.2
+[1m[92m   Compiling[0m combine v4.6.8
+[1m[92m   Compiling[0m cookie v0.18.2
+[1m[92m   Compiling[0m ipnet v2.12.2
+[1m[92m   Compiling[0m tower-layer v0.3.3
+[1m[92m   Compiling[0m getrandom v0.3.4
+[1m[92m   Compiling[0m cesu8 v1.1.0
+[1m[92m   Compiling[0m raw-window-handle v0.6.2
+[1m[92m   Compiling[0m tower v0.5.3
+[1m[92m   Compiling[0m jni v0.21.1
+[1m[92m   Compiling[0m hyper-util v0.1.20
+[1m[92m   Compiling[0m flate2 v1.1.10
+[1m[92m   Compiling[0m num_enum v0.7.6
+[1m[92m   Compiling[0m crypto-common v0.1.7
+[1m[92m   Compiling[0m block-buffer v0.10.4
+[1m[92m   Compiling[0m miniz_oxide v0.8.9
+[1m[92m   Compiling[0m ndk-sys v0.6.0+11769913
+[1m[92m   Compiling[0m fdeflate v0.3.7
+[1m[92m   Compiling[0m dpi v0.1.2
+[1m[92m   Compiling[0m bitflags v1.3.2
+[1m[92m   Compiling[0m png v0.17.16
+[1m[92m   Compiling[0m ndk v0.9.0
+[1m[92m   Compiling[0m digest v0.10.7
+[1m[92m   Compiling[0m crossbeam-channel v0.5.17
+[1m[92m   Compiling[0m tower-http v0.6.11
+[1m[92m   Compiling[0m http-body-util v0.1.5
+[1m[92m   Compiling[0m tao-macros v0.1.4
+[1m[92m   Compiling[0m cpufeatures v0.2.17
+[1m[92m   Compiling[0m tauri-runtime v2.11.3
+[1m[92m   Compiling[0m wry v0.55.1
+[1m[92m   Compiling[0m sha2 v0.10.9
+[1m[92m   Compiling[0m ico v0.5.0
+[1m[92m   Compiling[0m ring v0.17.14
+[1m[92m   Compiling[0m futures-sink v0.3.34
+[1m[92m   Compiling[0m tauri-runtime-wry v2.11.4
+[1m[92m   Compiling[0m tauri-codegen v2.6.3
+[1m[92m   Compiling[0m tokio-util v0.7.19
+[1m[92m   Compiling[0m tao v0.35.3
+[1m[92m   Compiling[0m serialize-to-javascript-impl v0.1.2
+[1m[92m   Compiling[0m zeroize v1.9.0
+[1m[92m   Compiling[0m rustls-pki-types v1.15.1
+[1m[92m   Compiling[0m serialize-to-javascript v0.1.2
+[1m[92m   Compiling[0m tauri-macros v2.6.3
+[1m[92m   Compiling[0m reqwest v0.13.5
+[1m[92m   Compiling[0m getrandom v0.2.17
+[1m[92m   Compiling[0m serde_repr v0.1.21
+[1m[92m   Compiling[0m mime v0.3.17
+[1m[92m   Compiling[0m untrusted v0.9.0
+[1m[92m   Compiling[0m rustls v0.23.44
+[1m[92m   Compiling[0m zerocopy v0.8.57
+[1m[92m   Compiling[0m rustls-webpki v0.103.15
+[1m[92m   Compiling[0m tauri-plugin-fs v2.5.2
+[1m[92m   Compiling[0m subtle v2.6.1
+[1m[92m   Compiling[0m webpki-roots v1.0.9
+[1m[92m   Compiling[0m rand_core v0.9.5
+[1m[92m   Compiling[0m tauri-plugin-zexor-vpn v0.1.0 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/tauri-plugin-zexor-vpn)
+[1m[92m   Compiling[0m tokio-rustls v0.26.5
+[1m[92m   Compiling[0m tauri-plugin-dialog v2.7.3
+[1m[92m   Compiling[0m ppv-lite86 v0.2.21
+[1m[92m   Compiling[0m tauri-plugin-process v2.3.1
+[1m[92m   Compiling[0m tauri-plugin-opener v2.5.5
+[1m[92m   Compiling[0m tauri-plugin-notification v2.4.0
+[1m[92m   Compiling[0m is-docker v0.2.0
+[1m[92m   Compiling[0m ryu v1.0.23
+[1m[92m   Compiling[0m serde_urlencoded v0.7.1
+[1m[92m   Compiling[0m is-wsl v0.4.0
+[1m[92m   Compiling[0m rand_chacha v0.9.0
+[1m[92m   Compiling[0m hyper-rustls v0.27.9
+[1m[92m   Compiling[0m lazy_static v1.5.0
+[1m[92m   Compiling[0m sharded-slab v0.1.7
+[1m[92m   Compiling[0m reqwest v0.12.28
+[1m[92m   Compiling[0m rand v0.9.5
+[1m[92m   Compiling[0m open v5.4.4
+[1m[92m   Compiling[0m matchers v0.2.0
+[1m[92m   Compiling[0m zexor-vpn-desktop v0.3.44 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri)
+[1m[92m   Compiling[0m tracing-log v0.2.0
+[1m[92m   Compiling[0m thread_local v1.1.10
+[1m[92m   Compiling[0m nu-ansi-term v0.50.3
+[1m[92m   Compiling[0m tracing-subscriber v0.3.23
+[1m[92m   Compiling[0m zexor-vpn-core v0.3.44 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/core)
+[1m[33mwarning[0m[1m: unused imports: `CREDENTIAL_SERVICE` and `CREDENTIAL_USER`[0m
+  [1m[94m--> [0msrc-tauri/src/auth/mod.rs:14:30
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m use crate::state::{AppState, CREDENTIAL_SERVICE, CREDENTIAL_USER};
+   [1m[94m|[0m                              [1m[33m^^^^^^^^^^^^^^^^^^[0m  [1m[33m^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused import: `AppHandle`[0m
+  [1m[94m--> [0msrc-tauri/src/lib.rs:19:13
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m use tauri::{AppHandle, Manager as _};
+   [1m[94m|[0m             [1m[33m^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused import: `Manager`[0m
+  [1m[94m--> [0msrc-tauri/src/xray/mod.rs:11:24
+   [1m[94m|[0m
+[1m[94m11[0m [1m[94m|[0m use tauri::{AppHandle, Manager};
+   [1m[94m|[0m                        [1m[33m^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused variable: `xray_binary`[0m
+   [1m[94m--> [0msrc-tauri/src/xray/mod.rs:428:5
+    [1m[94m|[0m
+[1m[94m428[0m [1m[94m|[0m     xray_binary: &std::path::Path,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_xray_binary`[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m: `zexor-vpn-desktop` (lib) generated 4 warnings (run `cargo fix --lib -p zexor-vpn-desktop` to apply 3 suggestions)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 2m 50s
+        Info symlinking lib "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" in jniLibs dir "/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libandroid.so"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libdl.so"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "liblog.so"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libm.so"
+        Info "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libc.so"
+        Info symlink at "/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/libzexor_vpn_lib.so" points to "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so"
+Downloading https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+.............10%.............20%.............30%.............40%.............50%.............60%.............70%.............80%.............90%..............100%
+e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
+    1. Kotlin compile daemon is ready
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/buildSrc/src/main/java/site/zexorvpn/desktop/kotlin/BuildTask.kt:53:17 'exec(Action<in ExecSpec!>): ExecResult' is deprecated. Deprecated in Java
+        Info connection; remote_addr=127.0.0.1:56364 conn_id=0
+
+> zexor-vpn-desktop@0.3.44 tauri
+> tauri android android-studio-script --release --target aarch64
+
+[1m[32m        Info[0m Using installed NDK: /usr/local/lib/android/sdk/ndk/27.2.12479018
+[1m[92m   Compiling[0m tauri v2.11.5
+[1m[92m   Compiling[0m wry v0.55.1
+[1m[92m   Compiling[0m tauri-plugin-fs v2.5.2
+[1m[92m   Compiling[0m tauri-plugin-process v2.3.1
+[1m[92m   Compiling[0m tauri-plugin-opener v2.5.5
+[1m[92m   Compiling[0m tauri-plugin-notification v2.4.0
+[1m[92m   Compiling[0m tauri-plugin-zexor-vpn v0.1.0 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/tauri-plugin-zexor-vpn)
+[1m[92m   Compiling[0m tauri-plugin-dialog v2.7.3
+[1m[92m   Compiling[0m zexor-vpn-desktop v0.3.44 (/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri)
+[1m[92m   Compiling[0m tauri-runtime-wry v2.11.4
+[1m[33mwarning[0m[1m: unused imports: `CREDENTIAL_SERVICE` and `CREDENTIAL_USER`[0m
+  [1m[94m--> [0msrc-tauri/src/auth/mod.rs:14:30
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m use crate::state::{AppState, CREDENTIAL_SERVICE, CREDENTIAL_USER};
+   [1m[94m|[0m                              [1m[33m^^^^^^^^^^^^^^^^^^[0m  [1m[33m^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused import: `AppHandle`[0m
+  [1m[94m--> [0msrc-tauri/src/lib.rs:19:13
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m use tauri::{AppHandle, Manager as _};
+   [1m[94m|[0m             [1m[33m^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused import: `Manager`[0m
+  [1m[94m--> [0msrc-tauri/src/xray/mod.rs:11:24
+   [1m[94m|[0m
+[1m[94m11[0m [1m[94m|[0m use tauri::{AppHandle, Manager};
+   [1m[94m|[0m                        [1m[33m^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused variable: `xray_binary`[0m
+   [1m[94m--> [0msrc-tauri/src/xray/mod.rs:428:5
+    [1m[94m|[0m
+[1m[94m428[0m [1m[94m|[0m     xray_binary: &std::path::Path,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_xray_binary`[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m: `zexor-vpn-desktop` (lib) generated 4 warnings (run `cargo fix --lib -p zexor-vpn-desktop` to apply 3 suggestions)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 44.82s
+[1m[32m        Info[0m symlinking lib "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" in jniLibs dir "/home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libandroid.so"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libdl.so"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "liblog.so"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libm.so"
+[1m[32m        Info[0m "/home/runner/work/ZexorVPNApp/ZexorVPNApp/target/aarch64-linux-android/release/libzexor_vpn_lib.so" requires shared lib "libc.so"
+Unable to strip the following libraries, packaging them as they are: libawg.so, libxray.so. Run with --info option to learn more.
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-2.11.5/mobile/android/src/main/java/app/tauri/AppPlugin.kt:35:37 'onBackPressed(): Unit' is deprecated. Deprecated in Java
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-2.11.5/mobile/android/src/main/java/app/tauri/plugin/Plugin.kt:107:5 'onDestroy(): Unit' is deprecated. use onDestroy(activity: AppCompatActivity) instead
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-2.11.5/mobile/android/src/main/java/app/tauri/plugin/Plugin.kt:112:5 'onRestart(): Unit' is deprecated. use onRestart(activity: AppCompatActivity) instead
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-2.11.5/mobile/android/src/main/java/app/tauri/plugin/PluginMethodData.kt:11:23 Parameter 'methodDecorator' is never used
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/tauri-plugin-zexor-vpn/android/src/main/java/site/zexorvpn/vpn/QuickToggleActivity.kt:21:9 'overridePendingTransition(Int, Int): Unit' is deprecated. Deprecated in Java
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/tauri-plugin-zexor-vpn/android/src/main/java/site/zexorvpn/vpn/QuickToggleActivity.kt:57:9 'overridePendingTransition(Int, Int): Unit' is deprecated. Deprecated in Java
+w: file:///home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-plugin-notification-2.4.0/android/src/main/java/NotificationSchedule.kt:99:7 'when' is exhaustive so 'else' is redundant here
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/java/site/zexorvpn/desktop/generated/RustWebView.kt:26:18 'setter for databaseEnabled: Boolean' is deprecated. Deprecated in Java
+w: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/src/main/java/site/zexorvpn/desktop/generated/WryActivity.kt:69:46 'onBackPressed(): Unit' is deprecated. This method has been deprecated in favor of using the
+      {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.
+      The OnBackPressedDispatcher controls how back button events are dispatched
+      to one or more {@link OnBackPressedCallback} objects.
+
+[Incubating] Problems report is available at: file:///home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+    Finished 1 APK at:
+        /home/runner/work/ZexorVPNApp/ZexorVPNApp/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+
